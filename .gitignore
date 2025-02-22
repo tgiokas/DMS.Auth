@@ -1,0 +1,8 @@
+*.vs
+*.suo
+**/bin/
+**/obj/
+
+*.svn-base
+
+**/packages
