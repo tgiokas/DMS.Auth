@@ -1,6 +1,6 @@
+using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Interfaces;
 using DMS.Auth.Infrastructure.Audit;
-using DMS.Auth.Infrastructure.Keycloak;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using RabbitMQ.Client;
 
@@ -8,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddApplicationServices();
+
+
 
 // Register Database Context
 builder.Services.AddInfrastructureServices(builder.Configuration, "sqlserver");
@@ -37,6 +39,9 @@ builder.Services.AddSingleton(sp =>
     };
     return (IConnection)factory.CreateConnectionAsync();
 });
+
+builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
+builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 
 // Audit Event Publisher
 builder.Services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();

@@ -1,134 +1,49 @@
 ﻿using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Domain.Entities;
-using DMS.Auth.Domain.Interfaces;
-
-namespace DMS.Auth.Application.Services;
+using Microsoft.Extensions.Logging;
 
 public class AuthenticationService : IAuthenticationService
 {
-    private readonly IUserRepository _userRepository;
     private readonly IKeycloakClient _keycloakClient;
-    private readonly IAuditEventPublisher _auditPublisher;
+    private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(
-        IUserRepository userRepository,
-        IKeycloakClient keycloakClient,
-        IAuditEventPublisher auditPublisher)
+    public AuthenticationService(IKeycloakClient keycloakClient, ILogger<AuthenticationService> logger)
     {
-        _userRepository = userRepository;
         _keycloakClient = keycloakClient;
-        _auditPublisher = auditPublisher;
+        _logger = logger;
     }
 
-    public async Task<UserDto> CreateUserAsync(CreateUserRequest request)
+    /// <summary>
+    /// Authenticates a user and retrieves a JWT token.
+    /// </summary>
+    public async Task<TokenResponse> AuthenticateUserAsync(string username, string password)
     {
-        // 1. Create user in Keycloak
-        var keycloakUserId = await _keycloakClient.CreateUserAsync(
-            realm: request.AgencyId,
-            username: request.Username,
-            email: request.Email);
-
-        // 2. Create and persist the user in our local DB
-        var user = new User(request.Username, request.Email, request.AgencyId);
-        await _userRepository.AddAsync(user);
-
-        // 3. Publish an Audit event
-        await _auditPublisher.PublishUserCreatedAsync(user);
-
-        return new UserDto
+        var tokenResponse = await _keycloakClient.GetTokenAsync(username, password);
+        if (tokenResponse == null)
         {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            IsMfaEnabled = user.IsMfaEnabled,
-            AgencyId = user.AgencyId
-        };
+            _logger.LogError("Authentication failed for user: {Username}", username);
+        }
+        return tokenResponse;
     }
 
-    // 1. Update an existing user
-    public async Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request)
+    /// <summary>
+    /// Refreshes a user's access token.
+    /// </summary>
+    public async Task<TokenResponse> RefreshTokenAsync(string refreshToken)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null) throw new Exception("User not found");
-
-        // Domain-level update
-        user.UpdateProfile(request.NewEmail);
-        await _userRepository.UpdateAsync(user);
-
-        // Also update in Keycloak if you keep the same ID or store a separate Keycloak user ID:
-        // Example (you might store keycloakUserId in your domain or a separate field):
-        var keycloakUserId = user.Id.ToString();
-        await _keycloakClient.UpdateUserEmailAsync(user.AgencyId, keycloakUserId, request.NewEmail);
-
-        // Optionally publish an "UserUpdated" audit event
-        // e.g. await _auditPublisher.PublishUserUpdatedAsync(user);
-
-        return new UserDto
+        var tokenResponse = await _keycloakClient.RefreshTokenAsync(refreshToken);
+        if (tokenResponse == null)
         {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            IsMfaEnabled = user.IsMfaEnabled,
-            AgencyId = user.AgencyId
-        };
+            _logger.LogError("Token refresh failed.");
+        }
+        return tokenResponse;
     }
 
-    // 2. Delete an existing user
-    public async Task DeleteUserAsync(Guid userId)
+    /// <summary>
+    /// Logs out a user by invalidating their refresh token.
+    /// </summary>
+    public async Task<bool> LogoutAsync(string refreshToken)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null) return; // or throw an exception
-
-        // For a "physical" delete in local DB:
-        await _userRepository.DeleteAsync(user);
-
-        // Also remove in Keycloak
-        var keycloakUserId = user.Id.ToString();
-        await _keycloakClient.DeleteUserAsync(user.AgencyId, keycloakUserId);
-
-        // Optionally publish an event "UserDeleted"
-        // e.g. await _auditPublisher.PublishUserDeletedAsync(user);
-    }
-
-    // 3. Assign a role
-    public async Task AssignRoleAsync(Guid userId, string roleName)
-    {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null) throw new Exception("User not found");
-
-        // If you store roles locally, you might:
-        // 1) Check if role exists in local DB
-        // 2) Link user to that role in a bridging table
-        // 3) Save changes
-
-        // Also do it in Keycloak:
-        var keycloakUserId = user.Id.ToString();
-        await _keycloakClient.AssignRoleAsync(user.AgencyId, keycloakUserId, roleName);
-
-        // Possibly publish "UserRoleAssigned" event
-    }
-    
-
-    public async Task EnableMfaAsync(Guid userId)
-    {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            throw new Exception("User not found");
-
-        // 1. Enable domain-level MFA
-        user.EnableMfa();
-        await _userRepository.UpdateAsync(user);
-
-        // 2. Also reflect it in Keycloak
-        await _keycloakClient.EnableMfaAsync(
-            realm: user.AgencyId,
-            // If you store Keycloak ID separately, use that.
-            // For demonstration, using user.Id.ToString() is not ideal.
-            keycloakUserId: user.Id.ToString());
-
-        // 3. Publish the event
-        await _auditPublisher.PublishMfaEnabledAsync(user);
+        return await _keycloakClient.LogoutAsync(refreshToken);
     }
 }
-

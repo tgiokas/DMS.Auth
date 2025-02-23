@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+namespace DMS.Auth.Application.Dtos;
 
-namespace DMS.Auth.Application.Dtos
-{  
-   public record CreateUserRequest
-   (
-       string Username,
-       string Email,
-       string AgencyId // which agency/realm to use
-   );
+public class CreateUserRequest
+{
+    public string Username { get; set; }
+    public string Password { get; set; }
+    public string Email { get; set; }
+    public bool IsMfaEnabled { get; set; }
+    public string AgencyId { get; set; }
+
 }

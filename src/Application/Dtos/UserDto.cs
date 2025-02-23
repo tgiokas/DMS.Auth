@@ -1,5 +1,5 @@
-﻿namespace DMS.Auth.Application.Dtos
-{
+﻿namespace DMS.Auth.Application.Dtos;
+
     public class UserDto
     {
         public Guid Id { get; set; }
@@ -8,4 +8,3 @@
         public bool IsMfaEnabled { get; set; }
         public string AgencyId { get; set; }
     }
-}

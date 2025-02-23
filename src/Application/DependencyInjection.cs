@@ -1,5 +1,4 @@
 ﻿using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Application.Services;
 
 namespace Microsoft.Extensions.DependencyInjection;
 

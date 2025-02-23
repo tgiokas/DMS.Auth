@@ -1,0 +1,6 @@
+services:
+  dms.auth.webapi:
+    image: ${DOCKER_REGISTRY-}dmsauthwebapi
+    build:
+      context: .
+      dockerfile: src/WebAPI/Dockerfile
