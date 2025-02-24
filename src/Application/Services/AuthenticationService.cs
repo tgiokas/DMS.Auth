@@ -1,6 +1,7 @@
-﻿using DMS.Auth.Application.Dtos;
+﻿using Microsoft.Extensions.Logging;
+
+using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
-using Microsoft.Extensions.Logging;
 
 public class AuthenticationService : IAuthenticationService
 {
@@ -16,7 +17,7 @@ public class AuthenticationService : IAuthenticationService
     /// <summary>
     /// Authenticates a user and retrieves a JWT token.
     /// </summary>
-    public async Task<TokenResponse> AuthenticateUserAsync(string username, string password)
+    public async Task<TokenResponse?> AuthenticateUserAsync(string username, string password)
     {
         var tokenResponse = await _keycloakClient.GetTokenAsync(username, password);
         if (tokenResponse == null)
@@ -29,7 +30,7 @@ public class AuthenticationService : IAuthenticationService
     /// <summary>
     /// Refreshes a user's access token.
     /// </summary>
-    public async Task<TokenResponse> RefreshTokenAsync(string refreshToken)
+    public async Task<TokenResponse?> RefreshTokenAsync(string refreshToken)
     {
         var tokenResponse = await _keycloakClient.RefreshTokenAsync(refreshToken);
         if (tokenResponse == null)

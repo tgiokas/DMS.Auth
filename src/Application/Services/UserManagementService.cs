@@ -1,6 +1,7 @@
-﻿using DMS.Auth.Application.Dtos;
+﻿using Microsoft.Extensions.Logging;
+
+using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
-using Microsoft.Extensions.Logging;
 
 public class UserManagementService
 {

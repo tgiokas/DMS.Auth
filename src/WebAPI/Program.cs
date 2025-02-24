@@ -40,7 +40,7 @@ builder.Services.AddSingleton(sp =>
     return (IConnection)factory.CreateConnectionAsync();
 });
 
-builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
+//builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
 builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 
 // Audit Event Publisher

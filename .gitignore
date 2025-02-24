@@ -6,3 +6,4 @@
 *.svn-base
 
 **/packages
+/volumes
