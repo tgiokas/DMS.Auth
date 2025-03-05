@@ -2,6 +2,7 @@ using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Interfaces;
 using DMS.Auth.Infrastructure.Audit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,7 +58,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = builder.Configuration["Keycloak:Authority"];
         options.Audience = builder.Configuration["Keycloak:ClientId"];
-        options.RequireHttpsMetadata = false;
+        options.RequireHttpsMetadata = false; // Only for local dev
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            RoleClaimType = "realm_access",
+            NameClaimType = "preferred_username"
+        };
     });
 
 builder.Services.AddAuthorization(options =>

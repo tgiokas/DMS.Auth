@@ -141,6 +141,32 @@ public class KeycloakClient : IKeycloakClient
         return true;
     }
 
+    public async Task<bool> CreateRoleAsync(string roleName, string roleDescr, string realm)
+    {
+        var newRole = new KeycloakRole
+        {
+            Name = roleName,
+            Description = roleDescr,
+            Composite = false,
+            ClientRole = false,
+            ContainerId = realm
+        };
+
+        var content = new StringContent(JsonSerializer.Serialize(newRole), Encoding.UTF8, "application/json");
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+
+        var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/roles", content);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Failed to create role in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
+            return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Retrieves a list of roles assigned to a user in Keycloak.
     /// </summary>

@@ -1,5 +1,4 @@
-﻿//using Microsoft.AspNetCore.Identity.Data;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/auth")]

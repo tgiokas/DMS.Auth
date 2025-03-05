@@ -1,7 +1,8 @@
-﻿using DMS.Auth.Application.Dtos;
-using DMS.Auth.Application.Interfaces;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using DMS.Auth.Application.Dtos;
+using DMS.Auth.Application.Interfaces;
 
 [ApiController]
 [Route("api/user-management")]

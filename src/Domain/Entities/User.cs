@@ -1,8 +1,13 @@
-﻿namespace DMS.Auth.Domain.Entities
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace DMS.Auth.Domain.Entities
 {
     public class User
     {
+        [Key]
         public Guid Id { get; private set; }
+
+        [Required]
         public string Username { get; private set; }
         public string Email { get; private set; }
         public string AgencyId { get; private set; }
