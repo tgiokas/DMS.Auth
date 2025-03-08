@@ -1,6 +1,7 @@
-﻿using DMS.Auth.Application.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+
 using DMS.Auth.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+using DMS.Auth.Application.Interfaces;
 
 namespace DMS.Auth.Infrastructure.Persistence
 {
@@ -10,6 +11,7 @@ namespace DMS.Auth.Infrastructure.Persistence
             : base(options) { }
 
         public required DbSet<User> Users { get; set; }
+        public required DbSet<Role> Roles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

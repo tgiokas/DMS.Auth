@@ -3,6 +3,8 @@
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
 
+namespace DMS.Auth.Application.Services;
+
 public class UserManagementService : IUserManagementService
 {
     private readonly IKeycloakClient _keycloakClient;
@@ -19,12 +21,12 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.GetUsersAsync();
     }
 
-    public async Task<bool> CreateUserAsync(CreateUserRequest request)
+    public async Task<bool> CreateUserAsync(CreateUserDto request)
     {
         return await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);        
     }
 
-    public async Task<bool> UpdateUserAsync(UpdateUserRequest request)
+    public async Task<bool> UpdateUserAsync(UpdateUserDto request)
     {
         return await _keycloakClient.UpdateUserAsync(request);
     }

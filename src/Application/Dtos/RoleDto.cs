@@ -1,6 +1,6 @@
 ﻿namespace DMS.Auth.Application.Dtos;
 
-public class RoleRepresentation
+public class RoleDto
 {
     public string Name { get; set; }
     public string Description { get; set; }

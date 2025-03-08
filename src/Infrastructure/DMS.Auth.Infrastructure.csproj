@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Application\DMS.Auth.Application.csproj" />
+    <ProjectReference Include="..\Domain\DMS.Auth.Domain.csproj" />
   </ItemGroup>
 
 </Project>

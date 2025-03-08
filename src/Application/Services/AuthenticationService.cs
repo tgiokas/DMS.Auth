@@ -3,6 +3,8 @@
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
 
+namespace DMS.Auth.Application.Services;
+
 public class AuthenticationService : IAuthenticationService
 {
     private readonly IKeycloakClient _keycloakClient;
@@ -17,9 +19,9 @@ public class AuthenticationService : IAuthenticationService
     /// <summary>
     /// Authenticates a user and retrieves a JWT token.
     /// </summary>
-    public async Task<TokenResponse?> AuthenticateUserAsync(string username, string password)
+    public async Task<TokenDto?> AuthenticateUserAsync(string username, string password)
     {
-        var tokenResponse = await _keycloakClient.GetTokenAsync(username, password);
+        var tokenResponse = await _keycloakClient.AuthenticateServiceAsync(username, password);
         if (tokenResponse == null)
         {
             _logger.LogError("Authentication failed for user: {Username}", username);
@@ -30,7 +32,7 @@ public class AuthenticationService : IAuthenticationService
     /// <summary>
     /// Refreshes a user's access token.
     /// </summary>
-    public async Task<TokenResponse?> RefreshTokenAsync(string refreshToken)
+    public async Task<TokenDto?> RefreshTokenAsync(string refreshToken)
     {
         var tokenResponse = await _keycloakClient.RefreshTokenAsync(refreshToken);
         if (tokenResponse == null)

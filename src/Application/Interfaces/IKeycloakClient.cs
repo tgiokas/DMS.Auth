@@ -6,10 +6,10 @@ public interface IKeycloakClient
 {
     Task<List<KeycloakUser>> GetUsersAsync();
     Task<string> GetUserIdByUsernameAsync(string username);
-    Task<TokenResponse> GetTokenAsync(string username, string password);
-    Task<TokenResponse> RefreshTokenAsync(string refreshToken);    
+    Task<TokenDto?> AuthenticateServiceAsync(string username, string password);
+    Task<TokenDto> RefreshTokenAsync(string refreshToken);    
     Task<bool> CreateUserAsync(string username, string email, string password);
-    Task<bool> UpdateUserAsync(UpdateUserRequest request);
+    Task<bool> UpdateUserAsync(UpdateUserDto request);
     Task<List<KeycloakRole>> GetUserRolesAsync(string username);
     Task<bool> AssignRoleAsync(string username, string roleId);
     Task<bool> EnableMfaAsync(string username);

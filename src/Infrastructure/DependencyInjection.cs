@@ -1,6 +1,5 @@
 ﻿using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Interfaces;
-using DMS.Auth.Infrastructure.Data;
 using DMS.Auth.Infrastructure.Persistence;
 using DMS.Auth.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;

@@ -1,0 +1,12 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "src\\WebAPI\\DMS.Auth.WebApi.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      }
+    ]
+  }
+]

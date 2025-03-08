@@ -3,7 +3,7 @@
 /// <summary>
 /// DTO for Keycloak authentication response.
 /// </summary>
-public class TokenResponse
+public class TokenDto
 {
     public string Access_token { get; set; }
     public string Refresh_token { get; set; }

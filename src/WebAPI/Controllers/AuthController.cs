@@ -1,30 +1,35 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
+using DMS.Auth.Application.Interfaces;
+using DMS.Auth.Application.Dtos;
+
+namespace DMS.Auth.WebApi;
+
 [ApiController]
-[Route("api/auth")]
+[Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AuthenticationService _authenticationService;
+    private readonly IAuthenticationService _authenticationService;
 
-    public AuthController(AuthenticationService authenticationService)
+    public AuthController(IAuthenticationService authenticationService)
     {
         _authenticationService = authenticationService;
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginDto request)
     {
         var tokenResponse = await _authenticationService.AuthenticateUserAsync(request.Username, request.Password);
         if (tokenResponse == null)
         {
             return Unauthorized(new { message = "Invalid credentials" });
         }
-
+         
         return Ok(tokenResponse);
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto request)
     {
         var tokenResponse = await _authenticationService.RefreshTokenAsync(request.RefreshToken);
         if (tokenResponse == null)
@@ -36,7 +41,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+    public async Task<IActionResult> Logout([FromBody] LogoutDto request)
     {
         var result = await _authenticationService.LogoutAsync(request.RefreshToken);
         if (!result)

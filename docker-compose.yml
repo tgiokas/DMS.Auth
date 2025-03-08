@@ -101,7 +101,7 @@ services:
       - keycloak
       - dms-db
     ports:
-      - "5000:80"
+      - "5000:8070"
 
         
 

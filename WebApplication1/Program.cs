@@ -7,32 +7,44 @@ using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = "http://localhost:8080/realms/DMSRealm";
-        options.Audience = "dms-auth-client";
-        options.RequireHttpsMetadata = false;
-        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = "http://localhost:8080/realms/DMSRealm",
-            ValidateAudience = true,
-            ValidAudience = "dms-auth-client",
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true
-        };
-    });
+//builder.Services.AddSwaggerGen();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
-    options.AddPolicy("AdminOrUser", policy => policy.RequireRole("Admin", "User"));
-});
+// Add authentication
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//    .AddJwtBearer(options =>
+//    {
+//        options.Authority = "http://localhost:8080/realms/DMSRealm";
+//options.Audience = "dms-auth-client";
+//options.RequireHttpsMetadata = false;
+//options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+//{
+//    ValidateIssuer = true,
+//    ValidIssuer = "http://localhost:8080/realms/DMSRealm",
+//    ValidateAudience = true,
+//    ValidAudience = "dms-auth-client",
+//    ValidateLifetime = true,
+//    ValidateIssuerSigningKey = true
+//};
+//    });
+
+//builder.Services.AddAuthorization(options =>
+//{
+//    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+//    options.AddPolicy("UserOnly", policy => policy.RequireRole("User"));
+//    options.AddPolicy("AdminOrUser", policy => policy.RequireRole("Admin", "User"));
+//});
+
+builder.Services.AddControllers();
+
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
