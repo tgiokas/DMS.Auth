@@ -30,8 +30,7 @@ public static class DependencyInjection
                     break;
 
                 case "sqlite":
-                    options.UseSqlite(connectionString);
-                    // Additional SQLite configurations if needed
+                    options.UseSqlite(connectionString);                   
                     break;
 
                 default:

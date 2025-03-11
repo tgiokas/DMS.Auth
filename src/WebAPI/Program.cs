@@ -8,6 +8,10 @@ using RabbitMQ.Client;
 using System.Security.Claims;
 using System.Text.Json;
 
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using DMS.Auth.Infrastructure.Persistence;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -18,7 +22,7 @@ builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 //builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
 // Register Database Context
-builder.Services.AddInfrastructureServices(builder.Configuration, "sqlserver");
+builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
 
 //builder.Services.AddDbContext<ApplicationDbContext>(options =>
 //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -82,39 +86,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnTokenValidated = context =>
             {
-                var user = context.Principal;
-                var identity = user.Identity as ClaimsIdentity;
-
-                var realmAccessClaim = identity.FindFirst("realm_access");
-                if (realmAccessClaim != null)
-                {
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(realmAccessClaim.Value);
-                        if (doc.RootElement.TryGetProperty("roles", out var roles))
-                        {
-                            Console.WriteLine("Extracted Roles from Token:");
-                            foreach (var role in roles.EnumerateArray())
-                            {
-                                string roleValue = role.GetString().ToLower();
-                                identity.AddClaim(new Claim(ClaimTypes.Role, roleValue));
-                                Console.WriteLine($" - {roleValue}");
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("No roles found in realm_access");
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        Console.WriteLine($"Failed to parse realm_access: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("realm_access claim not found in token.");
-                }
+                MapKeycloakRolesToRoleClaims0(context);
                 return Task.CompletedTask;
             }
         };
@@ -137,9 +109,69 @@ var app = builder.Build();
 //    app.UseSwaggerUI();
 //}
 
+//using (var scope = app.Services.CreateScope())
+//{
+//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    dbContext.Database.Migrate();
+//}
+
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
+{
+    var user = context.Principal;
+    var identity = user.Identity as ClaimsIdentity;
+
+    var realmAccessClaim = identity.FindFirst("realm_access");
+    if (realmAccessClaim == null)
+    {
+        Console.WriteLine("realm_access claim not found in token.");
+        return;
+    }
+
+    try
+    {
+        using var doc = JsonDocument.Parse(realmAccessClaim.Value);
+        if (doc.RootElement.TryGetProperty("roles", out var roles))
+        {
+            Console.WriteLine("Extracted Roles from Token:");
+            foreach (var role in roles.EnumerateArray())
+            {
+                string roleValue = role.GetString().ToLower();
+                identity.AddClaim(new Claim(ClaimTypes.Role, roleValue));
+                Console.WriteLine($" - {roleValue}");
+            }
+        }
+        else
+        {
+            Console.WriteLine("No roles found in realm_access");
+        }
+    }
+    catch (JsonException ex)
+    {
+        Console.WriteLine($"Failed to parse realm_access: {ex.Message}");
+    }
+}
+
+void MapKeycloakRolesToRoleClaims(TokenValidatedContext context)
+{
+    //var resourceAccess = JObject.Parse(context.Principal.FindFirst("resource_access").Value);
+    //var clientResource = resourceAccess[context.Principal.FindFirstValue("aud")];
+    var clientRoles = context.Principal.Claims.Where(w => w.Type == "user_realm_roles").ToList();
+    var claimsIdentity = context.Principal.Identity as ClaimsIdentity;
+    if (claimsIdentity == null)
+    {
+        return;
+    }
+
+    foreach (var clientRole in clientRoles)
+    {
+        claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, clientRole.Value));
+    }
+}
+
 

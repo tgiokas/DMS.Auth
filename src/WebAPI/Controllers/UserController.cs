@@ -25,37 +25,6 @@ public class UserManagementController : ControllerBase
         return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
     }
 
-    
-    [HttpGet("token-info")]
-    [Authorize] // Requires valid JWT Token
-    public IActionResult GetTokenInfo()
-    {
-        var identity = User.Identity as ClaimsIdentity;
-
-        if (identity == null)
-            return Unauthorized("No identity found.");
-
-        var claims = identity.Claims
-            .Select(c => new { c.Type, c.Value })
-            .ToList();
-
-        Console.WriteLine("===== Extracted Claims =====");
-        foreach (var claim in claims)
-        {
-            Console.WriteLine($"- {claim.Type}: {claim.Value}");
-        }
-        Console.WriteLine("============================");
-
-        return Ok(claims);
-    }
-
-    [HttpGet("{id}")]
-    [Authorize(Roles = "admin")]
-    public IActionResult GetUserById(int id)
-    {
-        return Ok(new { Id = id, Username = "user" + id, Email = $"user{id}@example.com" });
-    }
-
     [HttpGet("service-to-service")]
     [Authorize]
     public IActionResult Service2Service()
@@ -69,6 +38,13 @@ public class UserManagementController : ControllerBase
     {
         var users = await _userManagementService.GetUsersAsync();
         return Ok(users);
+    }
+
+    [HttpGet("{id}")]
+    [Authorize(Roles = "admin")]
+    public IActionResult GetUserById(int id)
+    {
+        return Ok(new { Id = id, Username = "user" + id, Email = $"user{id}@example.com" });
     }
 
     [HttpPost("create")]
@@ -101,5 +77,28 @@ public class UserManagementController : ControllerBase
     {
         var roles = await _userManagementService.GetUserRolesAsync(username);
         return Ok(roles);
-    }   
+    }
+
+    [HttpGet("token-info")]
+    [Authorize] // Requires valid JWT Token
+    public IActionResult GetTokenInfo()
+    {
+        var identity = User.Identity as ClaimsIdentity;
+
+        if (identity == null)
+            return Unauthorized("No identity found.");
+
+        var claims = identity.Claims
+            .Select(c => new { c.Type, c.Value })
+            .ToList();
+
+        Console.WriteLine("===== Extracted Claims =====");
+        foreach (var claim in claims)
+        {
+            Console.WriteLine($"- {claim.Type}: {claim.Value}");
+        }
+        Console.WriteLine("============================");
+
+        return Ok(claims);
+    }
 }
