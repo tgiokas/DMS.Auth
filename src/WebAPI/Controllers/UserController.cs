@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
-using System.Security.Claims;
 
 namespace DMS.Auth.WebApi;
 
@@ -17,13 +17,6 @@ public class UserManagementController : ControllerBase
     {
         _userManagementService = userManagementService;
     }
- 
-    [HttpGet("profile")]
-    [Authorize] 
-    public IActionResult GetUserProfile(string username)
-    {   
-        return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
-    }
 
     [HttpGet("service-to-service")]
     [Authorize]
@@ -31,7 +24,7 @@ public class UserManagementController : ControllerBase
     {
         return Ok("Service-to-Service Authentication successful.");
     }
-
+    
     [HttpGet("users")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetUsers()
@@ -47,10 +40,21 @@ public class UserManagementController : ControllerBase
         return Ok(new { Id = id, Username = "user" + id, Email = $"user{id}@example.com" });
     }
 
+    [HttpGet("profile")]
+    [Authorize]
+    public IActionResult GetUserProfile(string username)
+    {
+        return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
+    }
+
     [HttpPost("create")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize]
+    //[Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request)
     {
+
+        var accessToken = HttpContext.Items["AccessToken"] as string;
+
         var result = await _userManagementService.CreateUserAsync(request);
         if (!result)
         {

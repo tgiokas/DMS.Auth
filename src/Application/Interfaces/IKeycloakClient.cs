@@ -6,7 +6,8 @@ public interface IKeycloakClient
 {
     Task<List<KeycloakUser>> GetUsersAsync();
     Task<string> GetUserIdByUsernameAsync(string username);
-    Task<TokenDto?> AuthenticateServiceAsync(string username, string password);
+    Task<string?> GetUserAccessTokenAsync(string username, string password);
+    Task<TokenDto?> GetServiceAccessTokenAsync();
     Task<TokenDto> RefreshTokenAsync(string refreshToken);    
     Task<bool> CreateUserAsync(string username, string email, string password);
     Task<bool> UpdateUserAsync(UpdateUserDto request);

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DMS.Auth.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250310214343_InitialDbMigration")]
+    [Migration("20250311105557_InitialDbMigration")]
     partial class InitialDbMigration
     {
         /// <inheritdoc />
@@ -67,9 +67,7 @@ namespace DMS.Auth.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AgencyId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

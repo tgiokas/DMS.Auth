@@ -10,7 +10,7 @@ public class User
     [Required]
     public string Username { get; private set; }
     public string Email { get; private set; }
-    public string AgencyId { get; private set; }
+    public string? AgencyId { get; private set; }
     // identifies which agency (realm) this user belongs to
 
     // Additional domain properties

@@ -11,8 +11,12 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using DMS.Auth.Infrastructure.Persistence;
+using DMS.Auth.Application.Mappings;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Add services to the container.
 builder.Services.AddApplicationServices();
@@ -57,9 +61,44 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
 //builder.Services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
+
 //builder.Services.AddSwaggerGen();
+
+//builder.Services.AddKeycloakAuthentication(Config);
+
+//builder.Services.AddSingleton<IKeycloakUserManagement, KeycloakUserManagement>();
+
+//builder.Services.AddSwaggerGen(x =>
+//{
+//    x.SwaggerDoc("v1", new OpenApiInfo { Title = "Api", Version = "v1" });
+//    x.AddSecurityDefinition("Bearer ", new OpenApiSecurityScheme
+//    {
+//        Description = "JWT Authorization header using the Bearer scheme.",
+//        Name = "Authorization",
+//        In = ParameterLocation.Header,
+//        Type = SecuritySchemeType.ApiKey,
+//        Scheme = "Bearer "
+//    });
+//    x.AddSecurityRequirement(new OpenApiSecurityRequirement
+//                {
+//                    {
+//                        new OpenApiSecurityScheme
+//                        {
+//                            Reference = new OpenApiReference
+//                            {
+//                                Type = ReferenceType.SecurityScheme,
+//                                Id = "Bearer "
+//                            },
+//                            Scheme = "oauth2",
+//                            Name = "Bearer ",
+//                            In = ParameterLocation.Header
+//                        },
+//                        new List<string>()
+//                    }
+//                });
+//});
 
 // Configure Authentication & Keycloak JWT Bearer
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -73,7 +112,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidIssuer = builder.Configuration["Keycloak:Authority"],            
             ValidateAudience = true,
-            ValidAudiences = new[] { "dms-auth-client", "dms-service-client" }, // Allow multiple audiences
+            ValidAudiences = new[] { "dms-auth-client", "dms-service-client", "dms-admin-client"}, // Allow multiple audiences
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
@@ -99,7 +138,6 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("UserOnly", policy => policy.RequireRole("user"))
     .AddPolicy("AdminOrUser", policy => policy.RequireRole("admin", "user"));
 
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -109,12 +147,11 @@ var app = builder.Build();
 //    app.UseSwaggerUI();
 //}
 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//    dbContext.Database.Migrate();
-//}
-
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -64,9 +64,7 @@ namespace DMS.Auth.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AgencyId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

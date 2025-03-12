@@ -30,7 +30,7 @@ namespace DMS.Auth.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Username = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Email = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
-                    AgencyId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    AgencyId = table.Column<string>(type: "text", nullable: true),
                     IsMfaEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },

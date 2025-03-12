@@ -1,10 +1,10 @@
-﻿namespace DMS.Auth.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 using DMS.Auth.Domain.Entities;
 using DMS.Auth.Domain.Interfaces;
 using DMS.Auth.Infrastructure.Persistence;
-using System;
+
+namespace DMS.Auth.Infrastructure.Repositories;
 
 public class RoleRepository : IRoleRepository
 {

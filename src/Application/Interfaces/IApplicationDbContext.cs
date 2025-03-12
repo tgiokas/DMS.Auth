@@ -1,5 +1,5 @@
-﻿using DMS.Auth.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using DMS.Auth.Domain.Entities;
 
 namespace DMS.Auth.Application.Interfaces;
 

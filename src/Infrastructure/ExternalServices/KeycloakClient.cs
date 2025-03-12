@@ -27,17 +27,17 @@ public class KeycloakClient : IKeycloakClient
         _configuration = configuration;
         _logger = logger;
 
-        _keycloakServerUrl = _configuration["Keycloak:ServerUrl"];
+        _keycloakServerUrl = _configuration["Keycloak:BaseUrl"];
         _realm = _configuration["Keycloak:Realm"];
         _clientId = _configuration["Keycloak:ClientId"];
         _clientSecret = _configuration["Keycloak:ClientSecret"];
-        _adminToken = _configuration["Keycloak:AdminToken"];
-        _redirectUri = _configuration["Keycloak:AdminToken"];
+        //_adminToken = _configuration["Keycloak:AdminToken"];
+        //_redirectUri = _configuration["Keycloak:AdminToken"];
     }
 
 
     // Authenticate Backend Services (Microservices, APIs) using Client Credentials Flow.
-    public async Task<TokenDto?> AuthenticateServiceAsync(string username, string password)
+    public async Task<TokenDto?> GetServiceAccessTokenAsync()
     {
         var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
@@ -50,11 +50,12 @@ public class KeycloakClient : IKeycloakClient
         if (!response.IsSuccessStatusCode) return null;
 
         var responseBody = await response.Content.ReadAsStringAsync();
+        //return responseBody;
         return JsonSerializer.Deserialize<TokenDto>(responseBody);
     }
 
     // Authenticate Public Users (Frontend Apps) using Password Grant.    
-    public async Task<string?> AuthenticateUserAsync(string username, string password)
+    public async Task<string?> GetUserAccessTokenAsync(string username, string password)
     {       
         var content = new FormUrlEncodedContent(new[]
         {
@@ -148,31 +149,38 @@ public class KeycloakClient : IKeycloakClient
         var content = await response.Content.ReadAsStringAsync();
         var users = JsonSerializer.Deserialize<List<KeycloakUser>>(content);
 
-        return users?.Count > 0 ? users[0].Id : null;
+        return users?.Count > 0 ? users[0].UserName : null;
     }
     
     public async Task<bool> CreateUserAsync(string username, string email, string password)
     {
-        var newUser = new
+        var newUser = new KeycloakUser
         {
-            username = username,
-            email = email,
-            enabled = true,
-            credentials = new[]
+            UserName = username,
+            Email = email,
+            FirstName= "Test2",
+            LastName= "User",
+            Enabled= true,
+            Credentials = new[]
             {
-                new { type = "password", value = password, temporary = false }
+                new Credentials { Type = "password", Value = password, Temporary = false }
             }
         };
 
-        var content = new StringContent(JsonSerializer.Serialize(newUser), Encoding.UTF8, "application/json");
+        var jsonPayload = JsonSerializer.Serialize(newUser, new JsonSerializerOptions { WriteIndented = true });
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        var accessToken = await GetServiceAccessTokenAsync();        
+
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.access_token);
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/users", content);
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("Failed to create user in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to create user in Keycloak: {Response}", error);
             return false;
         }
 
@@ -361,5 +369,6 @@ public class KeycloakClient : IKeycloakClient
         }
 
         return true;
-    }    
+    }
+    
 }

@@ -8,6 +8,14 @@
 	  <AssemblyName>DMS.Auth.Infrastructure</AssemblyName>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>3</WarningLevel>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <WarningLevel>3</WarningLevel>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Remove="KeycloakClient3.cs" />
   </ItemGroup>
@@ -32,6 +40,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Application\DMS.Auth.Application.csproj" />
     <ProjectReference Include="..\Domain\DMS.Auth.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Migrations\" />
   </ItemGroup>
 
 </Project>
