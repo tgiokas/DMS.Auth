@@ -1,4 +1,4 @@
-﻿//namespace MyAuthService.Domain.ValueObjects;
+﻿//namespace DMS.Auth.Domain.ValueObjects;
 
 //public record HashedPassword(string Value)
 //{
