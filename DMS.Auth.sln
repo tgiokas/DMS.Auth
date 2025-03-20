@@ -22,7 +22,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMS.Auth.WebApi", "src\WebA
 EndProject
 Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{13E6DEBD-7A4C-4DFF-B59E-C3E244A7459D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1", "WebApplication1\WebApplication1.csproj", "{EDACCBB5-F1C8-44E3-8AC4-2E01CA6B9C69}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMS.Document.WebApi", "WebApplication1\DMS.Document.WebApi.csproj", "{EDACCBB5-F1C8-44E3-8AC4-2E01CA6B9C69}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

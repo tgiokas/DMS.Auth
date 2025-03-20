@@ -6,6 +6,11 @@
         "Path": "src\\WebAPI\\DMS.Auth.WebApi.csproj",
         "Action": "Start",
         "DebugTarget": "http"
+      },
+      {
+        "Path": "WebApplication1\\DMS.Document.WebApi.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
       }
     ]
   }

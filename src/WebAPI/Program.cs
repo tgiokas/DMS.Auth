@@ -1,18 +1,19 @@
-using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Domain.Interfaces;
-using DMS.Auth.Infrastructure.ExternalServices;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.IdentityModel.Tokens;
-using RabbitMQ.Client;
 using System.Security.Claims;
 using System.Text.Json;
-
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using DMS.Auth.Infrastructure.Persistence;
-using DMS.Auth.Application.Mappings;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+
+using RabbitMQ.Client;
+
+using DMS.Auth.Application.Interfaces;
+using DMS.Auth.Application.Mappings;
+using DMS.Auth.Domain.Interfaces;
+using DMS.Auth.Infrastructure.ExternalServices;
+using DMS.Auth.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,7 +113,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidIssuer = builder.Configuration["Keycloak:Authority"],            
             ValidateAudience = true,
-            ValidAudiences = new[] { "dms-auth-client", "dms-service-client", "dms-admin-client"}, // Allow multiple audiences
+            ValidAudiences = new[] { "dms-auth-app", "dms-document-app"}, // Allow multiple audiences
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
@@ -140,15 +141,11 @@ builder.Services.AddAuthorizationBuilder()
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
-
-using (var scope = app.Services.CreateScope())
+if (app.Environment.IsDevelopment())
 {
+    //    app.UseSwagger();
+    //    app.UseSwaggerUI();
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
 }

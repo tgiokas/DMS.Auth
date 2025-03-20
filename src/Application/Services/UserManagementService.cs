@@ -36,7 +36,7 @@ public class UserManagementService : IUserManagementService
         //{
         //    var user = _mapper.Map<User>(request);
         //    await _userRepository.AddAsync(user);
-        //}
+        //}       
 
         return await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);        
     }
@@ -45,17 +45,7 @@ public class UserManagementService : IUserManagementService
     {
         return await _keycloakClient.UpdateUserAsync(request);
     }
-
-    public async Task<bool> AssignRoleAsync(string username, string roleId)
-    {
-        return await _keycloakClient.AssignRoleAsync(username, roleId);
-    }
-
-    public async Task<bool> EnableMfaAsync(string username)
-    {
-        return await _keycloakClient.EnableMfaAsync(username);
-    }
-
+    
     public async Task<bool> DeleteUserAsync(string username)
     {
         return await _keycloakClient.DeleteUserAsync(username);
@@ -64,5 +54,15 @@ public class UserManagementService : IUserManagementService
     public async Task<List<KeycloakRole>> GetUserRolesAsync(string username)
     {
         return await _keycloakClient.GetUserRolesAsync(username);
+    }
+
+    public async Task<bool> AssignRoleAsync(string username, string roleId)
+    {
+        return await _keycloakClient.AssignRoleAsync(username, roleId);
+    }    
+
+    public async Task<bool> EnableMfaAsync(string username)
+    {
+        return await _keycloakClient.EnableMfaAsync(username);
     }
 }

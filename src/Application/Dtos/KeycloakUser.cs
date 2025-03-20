@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
 namespace DMS.Auth.Application.Dtos;
@@ -14,17 +13,20 @@ public class KeycloakUser
     public string UserName { get; set; }
     [JsonPropertyName("enabled")]
     public bool? Enabled { get; set; }
-    //[JsonProperty("totp")]
-    //public bool? Totp { get; set; }
-    //[JsonProperty("emailVerified")]
-    //public bool? EmailVerified { get; set; }
+    [JsonPropertyName("totp")]
+    public bool? Totp { get; set; }
+    [JsonPropertyName("emailVerified")]
+    public bool? EmailVerified { get; set; }
     [JsonPropertyName("firstName")]
     public string FirstName { get; set; }
     [JsonPropertyName("lastName")]
     public string LastName { get; set; }
     [JsonPropertyName("email")]
-    public string Email { get; set; }    
-  
+    public string Email { get; set; }
+
+    [JsonPropertyName("requiredActions")]
+    public ReadOnlyCollection<string> RequiredActions { get; set; }
+
     [JsonPropertyName("credentials")]
     public IEnumerable<Credentials> Credentials { get; set; }
     //[JsonProperty("groups")]

@@ -9,21 +9,14 @@ namespace DMS.Auth.WebApi;
 
 [ApiController]
 [Route("api/user")]
-public class UserManagementController : ControllerBase
+public class UserController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
 
-    public UserManagementController(IUserManagementService userManagementService)
+    public UserController(IUserManagementService userManagementService)
     {
         _userManagementService = userManagementService;
-    }
-
-    [HttpGet("service-to-service")]
-    [Authorize]
-    public IActionResult Service2Service()
-    {
-        return Ok("Service-to-Service Authentication successful.");
-    }
+    }      
     
     [HttpGet("users")]
     [Authorize(Policy = "AdminOnly")]
@@ -47,12 +40,11 @@ public class UserManagementController : ControllerBase
         return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
     }
 
-    [HttpPost("create")]
-    [Authorize]
+    [HttpPost("create")]   
     //[Authorize(Policy = "AdminOnly")]
+    //[Authorize(Roles = "admin")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request)
     {
-
         var accessToken = HttpContext.Items["AccessToken"] as string;
 
         var result = await _userManagementService.CreateUserAsync(request);
@@ -61,6 +53,18 @@ public class UserManagementController : ControllerBase
             return BadRequest(new { message = "Failed to create user" });
         }
         return Ok(new { message = "User created successfully" });
+    }
+
+    [HttpDelete("update/{username}")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto request)
+    {
+        var result = await _userManagementService.UpdateUserAsync(request);
+        if (!result)
+        {
+            return BadRequest(new { message = "Failed to update user" });
+        }
+        return Ok(new { message = "User updated successfully" });
     }
 
     [HttpDelete("delete/{username}")]
@@ -83,26 +87,26 @@ public class UserManagementController : ControllerBase
         return Ok(roles);
     }
 
-    [HttpGet("token-info")]
-    [Authorize] // Requires valid JWT Token
-    public IActionResult GetTokenInfo()
-    {
-        var identity = User.Identity as ClaimsIdentity;
+    //[HttpGet("token-info")]
+    //[Authorize] // Requires valid JWT Token
+    //public IActionResult GetTokenInfo()
+    //{
+    //    var identity = User.Identity as ClaimsIdentity;
 
-        if (identity == null)
-            return Unauthorized("No identity found.");
+    //    if (identity == null)
+    //        return Unauthorized("No identity found.");
 
-        var claims = identity.Claims
-            .Select(c => new { c.Type, c.Value })
-            .ToList();
+    //    var claims = identity.Claims
+    //        .Select(c => new { c.Type, c.Value })
+    //        .ToList();
 
-        Console.WriteLine("===== Extracted Claims =====");
-        foreach (var claim in claims)
-        {
-            Console.WriteLine($"- {claim.Type}: {claim.Value}");
-        }
-        Console.WriteLine("============================");
+    //    Console.WriteLine("===== Extracted Claims =====");
+    //    foreach (var claim in claims)
+    //    {
+    //        Console.WriteLine($"- {claim.Type}: {claim.Value}");
+    //    }
+    //    Console.WriteLine("============================");
 
-        return Ok(claims);
-    }
+    //    return Ok(claims);
+    //}
 }
