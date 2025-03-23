@@ -2,13 +2,6 @@
 
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Dtos;
-using Microsoft.AspNetCore.Authorization;
-using System.Net.Http.Headers;
-using System.Net.Http;
-using System.Text.Json;
-using Azure.Core;
-using Microsoft.AspNetCore.WebUtilities;
-
 
 namespace DMS.Auth.WebApi;
 
@@ -59,26 +52,12 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logout successful" });
     }
 
-    /// Get Temporary Session Token (`tempToken`)
-    /// This allows the user to fetch their TOTP QR code
-    [HttpPost("temp-token")]
-    public async Task<IActionResult> GetTempToken([FromBody] LoginDto request)
-    {
-        var tokenResponse = await _authenticationService.GetTempTokenAsync(request.Username ?? request.Email ?? string.Empty, request.Password);
-        if (tokenResponse == null)
-        {
-            return BadRequest("Failed to get Temp Token");
-        }
-       
-        return Ok(tokenResponse);
-    }
-
     /// Fetch TOTP QR Code and Secret for user enrollment 
-    [HttpPost("enroll")]
+    [HttpGet("mfa/setup")]
     //[Authorize]  // Requires user to be authenticated
-    public async Task<IActionResult> GetMfaAuthCode([FromBody] string tempToken)
-    {
-        var tokenResponse = await _authenticationService.GetMfaAuthCode(tempToken);
+    public IActionResult GetMfaAuthCode([FromQuery] string username)
+    {       
+        var tokenResponse = _authenticationService.GenerateMfaAuthCode(username);
         if (tokenResponse == null)
         {
             return Unauthorized(new { message = "Invalid credentials" });
@@ -88,10 +67,11 @@ public class AuthController : ControllerBase
     }
 
     /// Verify TOTP Code
-    [HttpPost("verify")]
-    public async Task<IActionResult> VerifyMfa([FromBody] MfaVerificationRequest request)
+    /// TODO Protect the /verify-totp Endpoint with a Temporary Token / Session    
+    [HttpPost("mfa/verify")]
+    public IActionResult VerifyMfaCode([FromBody] MfaVerifyDto request)
     {
-        var tokenResponse = await _authenticationService.VerifyMfa(request);
+        var tokenResponse = _authenticationService.VerifyAndRegisterTotpAsync(request.Username, request.OtpCode);
         if (tokenResponse == null)
         {
             return Unauthorized(new { message = "Invalid credentials" });
@@ -99,7 +79,6 @@ public class AuthController : ControllerBase
 
         return Ok(tokenResponse);
     }
-
 
     //[HttpGet("gsis-login")]
     //public async Task<IActionResult> LoginWithGsis()

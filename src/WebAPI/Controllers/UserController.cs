@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using DMS.Auth.Application.Dtos;
@@ -43,7 +42,7 @@ public class UserController : ControllerBase
     [HttpPost("create")]   
     //[Authorize(Policy = "AdminOnly")]
     //[Authorize(Roles = "admin")]
-    public async Task<IActionResult> CreateUser([FromBody] CreateUserDto request)
+    public async Task<IActionResult> CreateUser([FromBody] UserCreateDto request)
     {
         var accessToken = HttpContext.Items["AccessToken"] as string;
 
@@ -57,7 +56,7 @@ public class UserController : ControllerBase
 
     [HttpDelete("update/{username}")]
     [Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto request)
+    public async Task<IActionResult> UpdateUser([FromBody] UserUpdateDto request)
     {
         var result = await _userManagementService.UpdateUserAsync(request);
         if (!result)

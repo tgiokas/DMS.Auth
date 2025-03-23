@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOTP Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #qr-code {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Set Up Two-Factor Authentication (TOTP)</h1>
+
+    <div id="qr-code">
+        <h2>Scan this QR Code in Google Authenticator</h2>
+        <img id="qr-img" src="" alt="QR Code">
+    </div>
+
+    <script>
+        function generateQRCode(username, secret) {
+            const issuer = "DMSRealm";
+            const totpUrl = `otpauth://totp/${issuer}:${username}?secret=${secret}&issuer=${issuer}`;
+            const qrCodeUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(totpUrl)}`;
+
+            document.getElementById("qr-img").src = qrCodeUrl;
+            document.getElementById("qr-code").style.display = "block";
+        }
+
+        // Example Usage:
+        const username = "my-user"; // Replace with the actual username
+        const secret = "JBSWY3DPEHPK3PXP"; // Replace with the actual secret from Keycloak
+        generateQRCode(username, secret);
+    </script>
+
+</body>
+</html>

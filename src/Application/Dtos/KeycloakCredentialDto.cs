@@ -2,7 +2,7 @@
 
 namespace DMS.Auth.Application.Dtos
 {
-    public class Credentials
+    public class Credential
     {
         //[JsonProperty("algorithm")]
         //public string Algorithm { get; set; }

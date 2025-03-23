@@ -1,17 +1,21 @@
 ﻿using Microsoft.Extensions.Logging;
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
+using System.Web;
+using OtpNet;
 
 namespace DMS.Auth.Application.Services;
 
 public class AuthenticationService : IAuthenticationService
 {
-    private readonly IKeycloakClient _keycloakClient;
+    private readonly IKeycloakClient _keycloakClient;    
+    private readonly ITotpCacheService _cache;
     private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(IKeycloakClient keycloakClient, ILogger<AuthenticationService> logger)
+    public AuthenticationService(IKeycloakClient keycloakClient, ITotpCacheService cache, ILogger<AuthenticationService> logger)
     {
         _keycloakClient = keycloakClient;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -37,35 +41,54 @@ public class AuthenticationService : IAuthenticationService
         return tokenResponse;
     }
 
-    public async Task<TokenTempDto?> GetTempTokenAsync(string username, string password)
+
+    /// Generates TOTP QR Code and Secret for user enrollment 
+    public MfaSecretDto GenerateMfaAuthCode(string username, string issuer = "DMS Auth")
     {
-        var tokenResponse = await _keycloakClient.GetTempTokenAsync(username, password);
-        if (tokenResponse == null)
+        // Generate a 160-bit (20-byte) TOTP secret key
+        var secretKey = KeyGeneration.GenerateRandomKey(20);
+        string base32Secret = Base32Encoding.ToString(secretKey);
+
+        // Build otpauth URI for QR code
+        string label = $"{issuer}:{username}";
+        string encodedLabel = HttpUtility.UrlEncode(label);
+        string encodedIssuer = HttpUtility.UrlEncode(issuer);
+
+        string otpAuthUri =
+            $"otpauth://totp/{encodedLabel}?secret={base32Secret}&issuer={encodedIssuer}&algorithm=SHA1&digits=6&period=30";
+
+        _cache.StoreSecret(username, base32Secret);
+
+        return new MfaSecretDto
         {
-            _logger.LogError("Token refresh failed.");
-        }
-        return tokenResponse;
+            Secret = base32Secret,
+            QrCodeUri = otpAuthUri,
+            Issuer = issuer,
+            Username = username
+        };
     }
 
-    /// Fetch TOTP QR Code and Secret for user enrollment 
-    public async Task<MfaEnrollmentResponse?> GetMfaAuthCode(string tempToken)
+    public async Task<bool> VerifyAndRegisterTotpAsync(string username, string code)
     {
-        var tokenResponse = await _keycloakClient.GetMfaAuthCode(tempToken);
-        if (tokenResponse == null)
-        {
-            _logger.LogError("Token refresh failed.");
-        }
-        return tokenResponse;
-    }
+        var base32Secret = _cache.GetSecret(username);
+        if (string.IsNullOrWhiteSpace(base32Secret))
+            throw new InvalidOperationException("TOTP secret not found or expired.");
 
-    public async Task<TokenDto?> VerifyMfa(MfaVerificationRequest request)
-    {
-        var tokenResponse = await _keycloakClient.VerifyMfaAuthCode(request);
-        if (tokenResponse == null)
-        {
-            _logger.LogError("Token refresh failed.");
-        }
-        return tokenResponse;
+        var totp = new Totp(Base32Encoding.ToBytes(base32Secret));       
+        bool isValid = totp.VerifyTotp(code, out _, new VerificationWindow(previous: 2, future: 2));
+
+        if (!isValid) return false;
+
+        var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
+        if (string.IsNullOrEmpty(userId))
+            throw new InvalidOperationException("User not found in Keycloak.");
+
+        bool stored = await _keycloakClient.StoreTotpCredentialAsync(userId, base32Secret);
+        if (!stored)
+            throw new Exception("Failed to store TOTP credential in Keycloak.");
+
+        _cache.RemoveSecret(username);
+        return true;
     }
 
     /// Logs out a user by invalidating their refresh token.

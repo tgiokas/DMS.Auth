@@ -14,15 +14,21 @@ using DMS.Auth.Application.Mappings;
 using DMS.Auth.Domain.Interfaces;
 using DMS.Auth.Infrastructure.ExternalServices;
 using DMS.Auth.Infrastructure.Persistence;
+using DMS.Auth.Infrastructure.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
+// Add memory cache
+builder.Services.AddMemoryCache();
+
+//builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
+builder.Services.AddScoped<ITotpCacheService, TotpInMemoryCacheService>();
+
 // Add services to the container.
 builder.Services.AddApplicationServices();
 
-builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 //builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 //builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
@@ -153,6 +159,21 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.UseStaticFiles(); // Enable serving static files
+
+//app.UseRouting();
+
+//app.UseEndpoints(endpoints =>
+//{
+//    endpoints.MapGet("/", async context =>
+//    {
+//        context.Response.Redirect("htmlpage.html");
+//    });
+//    endpoints.MapControllers();
+//});
+
+
 app.Run();
 
 void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)

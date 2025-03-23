@@ -1,6 +1,6 @@
 ﻿namespace DMS.Auth.Application.Dtos;
 
-public class KeycloakRole
+public class KeycloakRoleDto
 {
     public string Name { get; set; }
     public string Description { get; set; }

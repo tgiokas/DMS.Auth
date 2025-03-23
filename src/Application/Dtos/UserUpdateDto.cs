@@ -1,6 +1,6 @@
 ﻿namespace DMS.Auth.Application.Dtos;
 
-public class UpdateUserDto
+public class UserUpdateDto
 {
     public string Username { get; set; }
     public string NewUsername { get; set; } // Optional

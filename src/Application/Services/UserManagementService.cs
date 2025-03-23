@@ -22,12 +22,12 @@ public class UserManagementService : IUserManagementService
         _mapper = mapper;
     }
 
-    public async Task<List<KeycloakUser>> GetUsersAsync()
+    public async Task<List<KeycloakUserDto>> GetUsersAsync()
     {
         return await _keycloakClient.GetUsersAsync();
     }
 
-    public async Task<bool> CreateUserAsync(CreateUserDto request)
+    public async Task<bool> CreateUserAsync(UserCreateDto request)
     {
 
         bool storeInLocalDb = bool.Parse(_configuration["StoreUsersInLocalDb"] ?? "false");
@@ -41,7 +41,7 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);        
     }
 
-    public async Task<bool> UpdateUserAsync(UpdateUserDto request)
+    public async Task<bool> UpdateUserAsync(UserUpdateDto request)
     {
         return await _keycloakClient.UpdateUserAsync(request);
     }
@@ -51,7 +51,7 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.DeleteUserAsync(username);
     }
 
-    public async Task<List<KeycloakRole>> GetUserRolesAsync(string username)
+    public async Task<List<KeycloakRoleDto>> GetUserRolesAsync(string username)
     {
         return await _keycloakClient.GetUserRolesAsync(username);
     }

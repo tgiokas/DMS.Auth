@@ -1,6 +1,6 @@
 ﻿namespace DMS.Auth.Application.Dtos;
 
-public class CreateUserDto
+public class UserCreateDto
 {
     public required string Username { get; set; }
     public string? Password { get; set; }
