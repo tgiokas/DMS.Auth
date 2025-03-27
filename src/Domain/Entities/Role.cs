@@ -3,7 +3,7 @@
 public class Role
 {
     public Guid Id { get; private set; }
-    public string Name { get; private set; }
+    public string Name { get; private set; } = string.Empty;
     public List<Permission> Permissions { get; private set; } = new();
 
     private Role() { }

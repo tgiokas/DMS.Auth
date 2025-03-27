@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Web;
+using Microsoft.Extensions.Logging;
+using OtpNet;
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
-using System.Web;
-using OtpNet;
+using DMS.Auth.Domain.Interfaces;
 
 namespace DMS.Auth.Application.Services;
 
@@ -10,24 +11,160 @@ public class AuthenticationService : IAuthenticationService
 {
     private readonly IKeycloakClient _keycloakClient;    
     private readonly ITotpCacheService _cache;
+    private readonly ITotpRepository _secretRepo;
     private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(IKeycloakClient keycloakClient, ITotpCacheService cache, ILogger<AuthenticationService> logger)
+    public AuthenticationService(IKeycloakClient keycloakClient, 
+        ITotpCacheService cache, 
+        ITotpRepository secretRepo,
+        ILogger<AuthenticationService> logger)
     {
         _keycloakClient = keycloakClient;
-        _cache = cache;
+        _cache = cache;        
+        _secretRepo = secretRepo;
         _logger = logger;
     }
 
     /// Authenticates a user and retrieves a JWT token.
-    public async Task<TokenDto?> AuthenticateUserAsync(string username, string password)
+    public async Task<LoginResult?> LoginUserAsync(string username, string password)
     {
+        // 1. Validate credentials via Keycloak token endpoint
         var tokenResponse = await _keycloakClient.GetUserAccessTokenAsync(username, password);
         if (tokenResponse == null)
         {
             _logger.LogError("Authentication failed for user: {Username}", username);
+            return LoginResult.Fail("Authentication failed for user");
+        }       
+
+        // 2. Check if MFA is required
+        var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
+        if (string.IsNullOrEmpty(userId))
+            return null;
+        var hasTotp = await _secretRepo.ExistsAsync(userId);
+
+        // 3.No TOTP user has no MFA setup  return token directly
+        if (!hasTotp)
+        {
+            return LoginResult.Ok(new
+            {
+                mfa_required = false,
+                setup_token = tokenResponse
+            });
+
+            //return LoginResult.Ok(JsonSerializer.Deserialize<object>(tokenResponse.Access_token));
         }
-        return tokenResponse;
+        else
+        {
+            // 3. Generate setup token and store LoginAttempt in cache
+            var setupToken = Guid.NewGuid().ToString("N");
+            _cache.StoreLoginAttempt(setupToken, new LoginAttemptCached
+            {
+                Username = username,
+                Password = password,
+                UserId = userId,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(5)
+            });
+
+            return LoginResult.Ok(new
+            {
+                mfa_required = true,
+                setup_token = tokenResponse
+            });
+        }
+    }        
+
+    /// Generates TOTP QR Code and Secret for user enrollment
+    public TotpSetupDto GenerateTotpCode(string username, string issuer = "DMS Auth")
+    {
+        // 1. Generate 20-byte secret
+        var secretKey = KeyGeneration.GenerateRandomKey(20);
+        string base32Secret = Base32Encoding.ToString(secretKey);
+
+        // 2. Build QR Code URI
+        string label = $"{issuer}:{username}";
+        string encodedLabel = HttpUtility.UrlEncode(label);
+        string encodedIssuer = HttpUtility.UrlEncode(issuer);
+
+        string otpAuthUri = $"otpauth://totp/{encodedLabel}?secret={base32Secret}&issuer={encodedIssuer}&algorithm=SHA1&digits=6&period=30";
+
+        // 3. Generate setup token to identify session
+        var setupToken = Guid.NewGuid().ToString("N");
+
+        // 4. Store TOTP secret + username in cache
+        _cache.StoreSecret(setupToken, new TotpSecretCached
+        {
+            Username = username,
+            Secret = base32Secret,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(5)
+        });
+
+        return new TotpSetupDto
+        {
+            Secret = base32Secret,
+            QrCodeUri = otpAuthUri,
+            Issuer = issuer,
+            Username = username,
+            SetupToken = setupToken
+        };
+    }
+
+    public async Task<bool> RegisterTotpAsync(string username, string code, string setupToken)
+    {
+        // 1. Load the TOTP secret from cache
+        var entry = _cache.GetSecret(setupToken);
+        if (entry is null || entry.ExpiresAt < DateTime.UtcNow)
+            return false;
+
+        // 2. Verify the code against the secret       
+        bool isValid = ValidateCode(entry.Secret, code);
+        if (!isValid) return false;
+
+        var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
+        if (userId == null) return false;
+
+        // 3. Save the verified secret to the database for this user
+        await _secretRepo.SaveAsync(userId, entry.Secret);        
+
+        // 5. Clean up setup cache
+        _cache.RemoveSecret(setupToken);
+
+        return true;
+    }
+
+    public async Task<LoginResult> VerifyLoginTotpAsync(string setupToken, string code)
+    {
+        //var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
+
+        // 1. Get LoginAttempt from cache
+        var loginAttempt = _cache.GetLoginAttempt(setupToken);
+        if (loginAttempt is null)
+            return LoginResult.Fail("Session expired");
+
+        // 2. Load the TOTP secret from DB
+        var secret = await _secretRepo.GetAsync(loginAttempt.UserId);
+        if (secret is null || string.IsNullOrWhiteSpace(secret))
+            return LoginResult.Fail("No Secret in DB for user");
+
+        // 3. Validate the provided 6-digit code
+        var isValid = ValidateCode(secret, code);
+        if (!isValid)
+            return LoginResult.Fail("Invalid TOTP code");
+
+        // 4. Validate credentials via Keycloak & return Token
+        var tokenResponse = await _keycloakClient.GetUserAccessTokenAsync(loginAttempt.Username, loginAttempt.Password);
+
+        if (tokenResponse == null)
+            return LoginResult.Fail("Failed to retrieve token from Keycloak");
+
+        _cache.RemoveLoginAttempt(setupToken);
+
+        return LoginResult.Ok(new
+        {
+            mfa_required = true,
+            setup_token = tokenResponse
+        });        
+
+        //return LoginResult.Ok(tokenResponse);
     }
 
     /// Refreshes a user's access token.
@@ -39,56 +176,6 @@ public class AuthenticationService : IAuthenticationService
             _logger.LogError("Token refresh failed.");
         }
         return tokenResponse;
-    }
-
-
-    /// Generates TOTP QR Code and Secret for user enrollment 
-    public MfaSecretDto GenerateMfaAuthCode(string username, string issuer = "DMS Auth")
-    {
-        // Generate a 160-bit (20-byte) TOTP secret key
-        var secretKey = KeyGeneration.GenerateRandomKey(20);
-        string base32Secret = Base32Encoding.ToString(secretKey);
-
-        // Build otpauth URI for QR code
-        string label = $"{issuer}:{username}";
-        string encodedLabel = HttpUtility.UrlEncode(label);
-        string encodedIssuer = HttpUtility.UrlEncode(issuer);
-
-        string otpAuthUri =
-            $"otpauth://totp/{encodedLabel}?secret={base32Secret}&issuer={encodedIssuer}&algorithm=SHA1&digits=6&period=30";
-
-        _cache.StoreSecret(username, base32Secret);
-
-        return new MfaSecretDto
-        {
-            Secret = base32Secret,
-            QrCodeUri = otpAuthUri,
-            Issuer = issuer,
-            Username = username
-        };
-    }
-
-    public async Task<bool> VerifyAndRegisterTotpAsync(string username, string code)
-    {
-        var base32Secret = _cache.GetSecret(username);
-        if (string.IsNullOrWhiteSpace(base32Secret))
-            throw new InvalidOperationException("TOTP secret not found or expired.");
-
-        var totp = new Totp(Base32Encoding.ToBytes(base32Secret));       
-        bool isValid = totp.VerifyTotp(code, out _, new VerificationWindow(previous: 2, future: 2));
-
-        if (!isValid) return false;
-
-        var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
-        if (string.IsNullOrEmpty(userId))
-            throw new InvalidOperationException("User not found in Keycloak.");
-
-        bool stored = await _keycloakClient.StoreTotpCredentialAsync(userId, base32Secret);
-        if (!stored)
-            throw new Exception("Failed to store TOTP credential in Keycloak.");
-
-        _cache.RemoveSecret(username);
-        return true;
     }
 
     /// Logs out a user by invalidating their refresh token.
@@ -115,5 +202,19 @@ public class AuthenticationService : IAuthenticationService
             _logger.LogError("Authentication failed for user: {Username}", code);
         }
         return tokenResponse;
+    }
+
+    private static bool ValidateCode(string base32Secret, string code)
+    {
+        try
+        {
+            var bytes = Base32Encoding.ToBytes(base32Secret);
+            var totp = new Totp(bytes);
+            return totp.VerifyTotp(code, out _, new VerificationWindow(1, 1));
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

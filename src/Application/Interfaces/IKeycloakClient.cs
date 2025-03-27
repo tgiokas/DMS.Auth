@@ -6,18 +6,15 @@ public interface IKeycloakClient
 {   
     Task<TokenDto?> GetUserAccessTokenAsync(string username, string password);
     Task<TokenDto?> GetAdminAccessTokenAsync();
-    Task<TokenDto> RefreshTokenAsync(string refreshToken);
-    //Task<string?> AuthenticateUserWithAuthorizationCodeAsync(string authorizationCode);
-    //Task<TokenDto?> VerifyMfaAuthCode(MfaVerificationRequest request);
+    Task<TokenDto?> RefreshTokenAsync(string refreshToken);
 
-    Task<bool> StoreTotpCredentialAsync(string userId, string secret);
     Task<bool> EnableMfaAsync(string username);
     Task<bool> LogoutAsync(string refreshToken);
     Task<string> GsisLoginUrl();
     Task<TokenDto?> GsisCallback(string code);
 
     Task<List<KeycloakUserDto>> GetUsersAsync();
-    Task<string> GetUserIdByUsernameAsync(string username);
+    Task<string?> GetUserIdByUsernameAsync(string username);
     Task<bool> CreateUserAsync(string username, string email, string password);
     Task<bool> UpdateUserAsync(UserUpdateDto request);
     Task<bool> DeleteUserAsync(string username);

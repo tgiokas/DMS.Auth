@@ -13,6 +13,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public required DbSet<User> Users { get; set; }
     public required DbSet<Role> Roles { get; set; }
 
+    public required DbSet<UserTotpSecret> UserTotpSecrets { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -25,6 +27,17 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
             entity.Property(u => u.Username).HasMaxLength(200);
             entity.Property(u => u.Email).HasMaxLength(300);                
+        });
+
+        //Configure User Entity
+        modelBuilder.Entity<UserTotpSecret>(entity =>
+        {
+            entity.ToTable("UserTotpSecrets");
+            entity.HasKey(u => u.Id);
+
+            entity.Property(x => x.UserId).IsRequired();
+            entity.Property(x => x.Base32Secret).IsRequired();
+            entity.HasIndex(x => x.UserId).IsUnique();
         });
 
         //// Configure AgencyAuthConfig (If needed in database)

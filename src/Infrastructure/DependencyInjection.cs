@@ -46,6 +46,8 @@ public static class DependencyInjection
         services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<ITotpRepository, TotpSecretRepository>();
 
         return services;
     }

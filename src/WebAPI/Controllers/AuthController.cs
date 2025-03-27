@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Dtos;
@@ -10,22 +11,24 @@ namespace DMS.Auth.WebApi;
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
+    private readonly IUserManagementService _userManagementService;
 
-    public AuthController(IAuthenticationService authenticationService)
+    public AuthController(IAuthenticationService authenticationService, IUserManagementService userManagementService)
     {
         _authenticationService = authenticationService;
+        _userManagementService = userManagementService;
     }
 
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto request)
     {
-        var tokenResponse = await _authenticationService.AuthenticateUserAsync(request.Username ?? request.Email ?? string.Empty, request.Password);
-        if (tokenResponse == null)
+        var response = await _authenticationService.LoginUserAsync(request.Username ?? request.Email ?? string.Empty, request.Password);
+        if (response == null)
         {
             return Unauthorized(new { message = "Invalid credentials" });
-        }
-         
-        return Ok(tokenResponse);
+        }       
+
+        return Ok(response);
     }
 
     [HttpPost("refresh")]
@@ -52,32 +55,43 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logout successful" });
     }
 
-    /// Fetch TOTP QR Code and Secret for user enrollment 
+    /// Fetch TOTP QR Code and Secret for MFA
     [HttpGet("mfa/setup")]
-    //[Authorize]  // Requires user to be authenticated
-    public IActionResult GetMfaAuthCode([FromQuery] string username)
+    public IActionResult GetTotpAuthCode([FromQuery] string username)
     {       
-        var tokenResponse = _authenticationService.GenerateMfaAuthCode(username);
-        if (tokenResponse == null)
+        var response = _authenticationService.GenerateTotpCode(username);
+        if (response == null)
         {
             return Unauthorized(new { message = "Invalid credentials" });
         }
 
-        return Ok(tokenResponse);
+        return Ok(response);
     }
 
-    /// Verify TOTP Code
-    /// TODO Protect the /verify-totp Endpoint with a Temporary Token / Session    
-    [HttpPost("mfa/verify")]
-    public IActionResult VerifyMfaCode([FromBody] MfaVerifyDto request)
+    /// Verify TOTP Code during SetUp       
+    [HttpPost("mfa/verify-setup")]
+    public async Task <IActionResult> VerifyAndRegisterTotpAsync([FromBody] TotpVerifyDto request)
     {
-        var tokenResponse = _authenticationService.VerifyAndRegisterTotpAsync(request.Username, request.OtpCode);
-        if (tokenResponse == null)
+        var response = await _authenticationService.RegisterTotpAsync(request.Username, request.Code, request.SetupToken);
+        if (response == false)
         {
             return Unauthorized(new { message = "Invalid credentials" });
         }
 
-        return Ok(tokenResponse);
+        return Ok(response);
+    }
+
+    /// Validate TOTP Code during Login
+    [HttpPost("mfa/verify-login")]   
+    public async Task <IActionResult> VerifyLoginTotpAsync([FromBody] TotpVerifyDto request)
+    {
+        var response = await _authenticationService.VerifyLoginTotpAsync(request.SetupToken, request.Code);
+        if (response == null)
+        {
+            return Unauthorized(new { message = "Invalid credentials" });
+        }
+
+        return Ok(response);
     }
 
     //[HttpGet("gsis-login")]
@@ -98,5 +112,28 @@ public class AuthController : ControllerBase
     //    }
 
     //    return Ok(tokenResponse);
+    //}
+
+    //[HttpGet("token-info")]
+    //[Authorize] // Requires valid JWT Token
+    //public IActionResult GetTokenInfo()
+    //{
+    //    var identity = User.Identity as ClaimsIdentity;
+
+    //    if (identity == null)
+    //        return Unauthorized("No identity found.");
+
+    //    var claims = identity.Claims
+    //        .Select(c => new { c.Type, c.Value })
+    //        .ToList();
+
+    //    Console.WriteLine("===== Extracted Claims =====");
+    //    foreach (var claim in claims)
+    //    {
+    //        Console.WriteLine($"- {claim.Type}: {claim.Value}");
+    //    }
+    //    Console.WriteLine("============================");
+
+    //    return Ok(claims);
     //}
 }

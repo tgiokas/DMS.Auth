@@ -11,13 +11,9 @@ public class User
     public string Username { get; private set; }
     public string Email { get; private set; }
     public string? AgencyId { get; private set; }
-    // identifies which agency (realm) this user belongs to
-
-    // Additional domain properties
     public bool IsMfaEnabled { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    // EF Core requires a parameterless constructor
     private User() { }
 
     public User(string username, string email, string agencyId)
@@ -30,11 +26,8 @@ public class User
         CreatedAt = DateTime.UtcNow;
     }
 
-    // Add your new UpdateProfile method
     public void UpdateProfile(string newEmail)
-    {
-        // Optional: Add domain validation logic 
-        // e.g., check if the email is well-formed, not empty, etc.
+    {       
         if (string.IsNullOrWhiteSpace(newEmail) || !newEmail.Contains("@"))
         {
             throw new InvalidOperationException("Invalid email address.");

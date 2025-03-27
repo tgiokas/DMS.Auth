@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -31,7 +30,7 @@ public partial class KeycloakClient : IKeycloakClient
     {
         var accessToken = await GetAdminAccessTokenAsync();
         _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", accessToken.Access_token);
+            new AuthenticationHeaderValue("Bearer", accessToken?.Access_token);
 
         var response = await _httpClient.GetAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/users?username={username}");
 
@@ -54,10 +53,12 @@ public partial class KeycloakClient : IKeycloakClient
             //var tokenJson = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
             // return tokenJson.GetProperty("id").GetString();
 
-            var users = JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            //var users = JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse, new JsonSerializerOptions
+            //{
+            //    PropertyNameCaseInsensitive = true
+            //});
+
+            var users = JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse);
 
             return users?.FirstOrDefault()?.Id;
         }
@@ -67,7 +68,6 @@ public partial class KeycloakClient : IKeycloakClient
             return null;
         }
     }
-
 
     public async Task<bool> CreateUserAsync(string username, string email, string password)
     {
@@ -79,7 +79,7 @@ public partial class KeycloakClient : IKeycloakClient
             LastName = "User",
             Enabled = true,
             EmailVerified = false,
-            RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL", "CONFIGURE_TOTP" }),
+            //RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL", "CONFIGURE_TOTP" }),
             //RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL" }),
             Credentials = new[]
             {

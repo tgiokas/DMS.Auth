@@ -3,6 +3,7 @@ using AutoMapper;
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Interfaces;
+using DMS.Auth.Domain.Entities;
 
 namespace DMS.Auth.Application.Services;
 
@@ -27,16 +28,21 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.GetUsersAsync();
     }
 
+    //public async Task<KeycloakUserDto> GetUserProfile(string username)
+    //{
+    //    return await _keycloakClient.GetUserIdByUsernameAsync(username);
+    //}
+
     public async Task<bool> CreateUserAsync(UserCreateDto request)
     {
 
         bool storeInLocalDb = bool.Parse(_configuration["StoreUsersInLocalDb"] ?? "false");
 
-        //if (storeInLocalDb)
-        //{
-        //    var user = _mapper.Map<User>(request);
-        //    await _userRepository.AddAsync(user);
-        //}       
+        if (storeInLocalDb)
+        {
+            var user = _mapper.Map<User>(request);
+            await _userRepository.AddAsync(user);
+        }
 
         return await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);        
     }

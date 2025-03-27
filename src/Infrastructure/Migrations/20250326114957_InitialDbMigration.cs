@@ -40,6 +40,23 @@ namespace DMS.Auth.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserTotpSecrets",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    Base32Secret = table.Column<string>(type: "text", nullable: false),
+                    Enabled = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LastVerifiedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Verified = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserTotpSecrets", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Permission",
                 columns: table => new
                 {
@@ -61,6 +78,12 @@ namespace DMS.Auth.Infrastructure.Migrations
                 name: "IX_Permission_RoleId",
                 table: "Permission",
                 column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserTotpSecrets_UserId",
+                table: "UserTotpSecrets",
+                column: "UserId",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -71,6 +94,9 @@ namespace DMS.Auth.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "Users");
+
+            migrationBuilder.DropTable(
+                name: "UserTotpSecrets");
 
             migrationBuilder.DropTable(
                 name: "Roles");

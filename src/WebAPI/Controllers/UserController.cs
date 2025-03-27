@@ -39,9 +39,7 @@ public class UserController : ControllerBase
         return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
     }
 
-    [HttpPost("create")]   
-    //[Authorize(Policy = "AdminOnly")]
-    //[Authorize(Roles = "admin")]
+    [HttpPost("create")]
     public async Task<IActionResult> CreateUser([FromBody] UserCreateDto request)
     {
         var accessToken = HttpContext.Items["AccessToken"] as string;
@@ -86,26 +84,4 @@ public class UserController : ControllerBase
         return Ok(roles);
     }
 
-    //[HttpGet("token-info")]
-    //[Authorize] // Requires valid JWT Token
-    //public IActionResult GetTokenInfo()
-    //{
-    //    var identity = User.Identity as ClaimsIdentity;
-
-    //    if (identity == null)
-    //        return Unauthorized("No identity found.");
-
-    //    var claims = identity.Claims
-    //        .Select(c => new { c.Type, c.Value })
-    //        .ToList();
-
-    //    Console.WriteLine("===== Extracted Claims =====");
-    //    foreach (var claim in claims)
-    //    {
-    //        Console.WriteLine($"- {claim.Type}: {claim.Value}");
-    //    }
-    //    Console.WriteLine("============================");
-
-    //    return Ok(claims);
-    //}
 }

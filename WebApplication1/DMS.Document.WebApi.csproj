@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Attributes\RequireMfaAttribute .cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="htmlpage.html" />
   </ItemGroup>
 
@@ -16,6 +20,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Attributes\" />
   </ItemGroup>
 
 </Project>

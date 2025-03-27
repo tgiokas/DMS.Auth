@@ -140,34 +140,7 @@ public partial class KeycloakClient : IKeycloakClient
         }
 
         return true;
-    }
-
-    public async Task<bool> StoreTotpCredentialAsync(string userId, string secret)
-    {
-        var accessToken = await GetAdminAccessTokenAsync();       
-
-        var requestUrl = $"{_keycloakServerUrl}admin/realms/{_realm}/users/{userId}/credentials";
-
-        var payload = new
-        {
-            type = "otp",
-            value = secret,
-            temporary = false
-        };
-
-        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Access_token);
-        var response = await _httpClient.PostAsync(requestUrl, content);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("Failed to send email MFA in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
-            return false;
-        }
-
-        return true;
-    }
+    }   
 
     private async Task<bool> SendVerifyEmail(string? userId, string? adminToken = null)
     {

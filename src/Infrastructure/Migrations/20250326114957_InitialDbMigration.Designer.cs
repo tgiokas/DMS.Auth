@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DMS.Auth.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250311105557_InitialDbMigration")]
+    [Migration("20250326114957_InitialDbMigration")]
     partial class InitialDbMigration
     {
         /// <inheritdoc />
@@ -88,6 +88,40 @@ namespace DMS.Auth.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("DMS.Auth.Domain.Entities.UserTotpSecret", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Base32Secret")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Verified")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserTotpSecrets", (string)null);
                 });
 
             modelBuilder.Entity("DMS.Auth.Domain.Entities.Permission", b =>

@@ -1,20 +1,11 @@
 using System.Security.Claims;
 using System.Text.Json;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-
 using RabbitMQ.Client;
-
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Mappings;
-using DMS.Auth.Domain.Interfaces;
 using DMS.Auth.Infrastructure.ExternalServices;
-using DMS.Auth.Infrastructure.Persistence;
-using DMS.Auth.Infrastructure.Caching;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,19 +15,14 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddMemoryCache();
 
 //builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
-builder.Services.AddScoped<ITotpCacheService, TotpInMemoryCacheService>();
+builder.Services.AddScoped<ITotpCacheService, TotpCacheService>();
 
 // Add services to the container.
 builder.Services.AddApplicationServices();
 
-//builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
-//builder.Services.AddScoped<IUserManagementService, UserManagementService>();
-
 // Register Database Context
 builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
 
-//builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // HttpClient for Keycloak
 builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
@@ -48,6 +34,9 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
     }
     client.BaseAddress = new Uri(baseUrl);
 });
+
+//builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
+//builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 
 // RabbitMQ Connection
 //builder.Services.AddSingleton(sp =>
@@ -61,8 +50,6 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
 //    return (IConnection)factory.CreateConnectionAsync();
 //});
 
-//builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
-//builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 
 // Audit Event Publisher
 //builder.Services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();
@@ -75,7 +62,6 @@ builder.Services.AddEndpointsApiExplorer();
 
 //builder.Services.AddKeycloakAuthentication(Config);
 
-//builder.Services.AddSingleton<IKeycloakUserManagement, KeycloakUserManagement>();
 
 //builder.Services.AddSwaggerGen(x =>
 //{
@@ -147,14 +133,14 @@ builder.Services.AddAuthorizationBuilder()
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    //    app.UseSwagger();
-    //    app.UseSwaggerUI();
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    //    app.UseSwagger();
+//    //    app.UseSwaggerUI();
+//    using var scope = app.Services.CreateScope();
+//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    dbContext.Database.Migrate();
+//}
 
 app.UseAuthentication();
 app.UseAuthorization();
