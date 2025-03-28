@@ -12,7 +12,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     public required DbSet<User> Users { get; set; }
     public required DbSet<Role> Roles { get; set; }
-
     public required DbSet<UserTotpSecret> UserTotpSecrets { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -13,6 +13,7 @@ public interface IKeycloakClient
 
     Task<List<KeycloakUserDto>> GetUsersAsync();
     Task<string?> GetUserIdByUsernameAsync(string username);
+    Task<Credential?> GetUserCredentialsAsync(string userId);
     Task<bool> CreateUserAsync(string username, string email, string password);
     Task<bool> UpdateUserAsync(UserUpdateDto request);
     Task<bool> DeleteUserAsync(string username);

@@ -40,8 +40,8 @@ public partial class KeycloakClient : IKeycloakClient
     public async Task<string?> GetUserIdByUsernameAsync(string username)
     {
         var accessToken = await GetAdminAccessTokenAsync();
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", accessToken?.Access_token);
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken?.Access_token);
 
         var response = await _httpClient.GetAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/users?username={username}");
 
@@ -80,6 +80,33 @@ public partial class KeycloakClient : IKeycloakClient
         }
     }
 
+    public async Task<Credential?> GetUserCredentialsAsync(string userId)
+    {
+        var adminToken = await GetAdminAccessTokenAsync();
+
+        var requestUrl = $"{_keycloakServerUrl}admin/realms/{_realm}/users/{userId}/credentials";
+
+        //var requestBody = new Credential { Type = "otp", Temporary = false };
+
+        //var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
+
+        var response = await _httpClient.GetAsync(requestUrl);
+
+        var jsonResponse = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {            
+            _logger.LogError("Failed to get User Credentials from Keycloak: {Response}", jsonResponse);
+            return null;
+        }
+
+        var credentials = JsonSerializer.Deserialize<Credential>(jsonResponse);
+
+        return credentials;
+    }
+
     public async Task<bool> CreateUserAsync(string username, string email, string password)
     {
         var newUser = new KeycloakUserDto
@@ -89,7 +116,7 @@ public partial class KeycloakClient : IKeycloakClient
             FirstName = "Test2",
             LastName = "User",
             Enabled = true,
-            EmailVerified = false,
+            EmailVerified = true,
             //RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL", "CONFIGURE_TOTP" }),
             //RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL" }),
             Credentials = new[]

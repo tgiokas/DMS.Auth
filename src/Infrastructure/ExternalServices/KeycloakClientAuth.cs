@@ -115,8 +115,7 @@ public partial class KeycloakClient : IKeycloakClient
 
         return true;
     }
-
-    
+        
 
     private async Task<bool> SendVerifyEmail(string? userId, string? adminToken = null)
     {
@@ -161,34 +160,6 @@ public partial class KeycloakClient : IKeycloakClient
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
 
         var response = await _httpClient.PutAsync(requestUrl, content);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            _logger.LogError("Failed to send email MFA in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
-            return false;
-        }
-
-        return true;
-    }
-
-    public async Task<bool> FetchMfaQrCode(string? userId)
-    {
-        var adminToken = await GetAdminAccessTokenAsync();
-       
-        var requestUrl = $"{_keycloakServerUrl}admin/realms/{_realm}/users/{userId}/credentials";
-
-        //var requestBody0 = new
-        //{
-        //    requiredActions = new[] { "CONFIGURE_TOTP" }
-        //};
-
-        var requestBody = new Credential { Type = "otp", Temporary = false };
-
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
-
-        var response = await _httpClient.PostAsync(requestUrl, content);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -290,25 +261,5 @@ public partial class KeycloakClient : IKeycloakClient
     //    var jsonResponse = await response.Content.ReadAsStringAsync();
     //    var tokenJson = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
     //    return tokenJson.GetProperty("access_token").GetString();
-    //}
-
-    //public async Task<TokenDto?> VerifyMfaAuthCode(MfaVerificationRequest request)
-    //{
-    //    var content = new FormUrlEncodedContent(new[]
-    //    {
-    //        new KeyValuePair<string, string>("grant_type", "password"),
-    //        new KeyValuePair<string, string>("client_id", _clientId),
-    //        new KeyValuePair<string, string>("client_secret", _clientSecret),
-    //        new KeyValuePair<string, string>("username", request.Username),
-    //        new KeyValuePair<string, string>("password", request.Password),
-    //        new KeyValuePair<string, string>("totp", request.OtpCode)
-    //    });
-
-    //    var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
-    //    if (!response.IsSuccessStatusCode) return null;
-
-    //    var responseBody = await response.Content.ReadAsStringAsync();
-
-    //    return JsonSerializer.Deserialize<TokenDto>(responseBody);
     //}
 }
