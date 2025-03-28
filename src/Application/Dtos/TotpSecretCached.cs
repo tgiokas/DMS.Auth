@@ -2,7 +2,7 @@
 
 public class TotpSecretCached
 {
-    public string Username { get; set; } = default!;
-    public string Secret { get; set; } = default!;
+    public required string Username { get; set; }
+    public required string Secret { get; set; }
     public DateTime ExpiresAt { get; set; }
 }

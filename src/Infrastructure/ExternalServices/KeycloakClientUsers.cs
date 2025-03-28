@@ -9,7 +9,7 @@ using DMS.Auth.Application.Interfaces;
 namespace DMS.Auth.Infrastructure.ExternalServices;
 
 public partial class KeycloakClient : IKeycloakClient
-{     
+{
     public async Task<List<KeycloakUserDto>> GetUsersAsync()
     {
         var adminToken = await GetAdminAccessTokenAsync();
@@ -25,7 +25,16 @@ public partial class KeycloakClient : IKeycloakClient
         }
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse);
+
+        var users = JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse);
+
+        if (users == null)
+        {
+            _logger.LogWarning("Empty response body while fetching users from Keycloak.");
+            return new List<KeycloakUserDto>();
+        }
+
+        return users;
     }
 
     public async Task<string?> GetUserIdByUsernameAsync(string username)

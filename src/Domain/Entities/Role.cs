@@ -6,13 +6,13 @@ public class Role
     public string Name { get; private set; } = string.Empty;
     public List<Permission> Permissions { get; private set; } = new();
 
-    private Role() { }
+    //private Role() { }
 
-    public Role(string name)
-    {
-        Id = Guid.NewGuid();
-        Name = name;
-    }
+    //public Role(string name)
+    //{
+    //    Id = Guid.NewGuid();
+    //    Name = name;
+    //}
 
     public void AddPermission(Permission permission)
     {

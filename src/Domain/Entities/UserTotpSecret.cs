@@ -9,6 +9,4 @@ public class UserTotpSecret
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastVerifiedAt { get; set; }
     public bool Verified { get; set; }
-
-    public UserTotpSecret() { }
 }

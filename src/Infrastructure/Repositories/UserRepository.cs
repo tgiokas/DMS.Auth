@@ -20,10 +20,10 @@ public class UserRepository : IUserRepository
         return await _dbContext.Users.FindAsync(id);
     }
 
-    public async Task<User?> GetByUsernameAsync(string username, string agencyId)
+    public async Task<User?> GetByUsernameAsync(string username)
     {
         return await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Username == username && u.AgencyId == agencyId);
+            .FirstOrDefaultAsync(u => u.Username == username);
     }
 
     public async Task AddAsync(User user)

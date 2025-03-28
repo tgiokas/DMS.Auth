@@ -15,6 +15,11 @@ public class RoleRepository : IRoleRepository
         _dbContext = dbContext;
     }
 
+    public Task<Role?> GetByIdAsync(Guid id)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<Role?> GetByNameAsync(string roleName)
     {
         return await _dbContext.Roles
@@ -32,16 +37,6 @@ public class RoleRepository : IRoleRepository
     {
         _dbContext.Roles.Update(role);
         await _dbContext.SaveChangesAsync();
-    }
-
-    public Task<Role?> GetByIdAsync(Guid id)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Role?> GetByNameAsync(string username, string agencyId)
-    {
-        throw new NotImplementedException();
     }
 
     public Task DeleteAsync(Role user)

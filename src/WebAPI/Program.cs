@@ -9,6 +9,8 @@ using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Mappings;
 using DMS.Auth.Infrastructure.DependencyInjection;
 using DMS.Auth.Infrastructure.ExternalServices;
+using DMS.Auth.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -135,14 +137,14 @@ builder.Services.AddAuthorizationBuilder()
 
 var app = builder.Build();
 
-//if (app.Environment.IsDevelopment())
-//{
-//    //    app.UseSwagger();
-//    //    app.UseSwaggerUI();
-//    using var scope = app.Services.CreateScope();
-//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//    dbContext.Database.Migrate();
-//}
+if (app.Environment.IsDevelopment())
+{
+    //    app.UseSwagger();
+    //    app.UseSwaggerUI();
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.Migrate();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

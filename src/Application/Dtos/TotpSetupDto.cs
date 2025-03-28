@@ -2,9 +2,9 @@
 
 public class TotpSetupDto
 {
-    public string Username { get; set; } = default!;
-    public string Secret { get; set; } = default!;
-    public string QrCodeUri { get; set; } = default!;
-    public string Issuer { get; set; } = default!;   
-    public string SetupToken { get; set; } = default!;
+    public required string Username { get; set; } 
+    public required string Secret { get; set; } 
+    public required string QrCodeUri { get; set; } 
+    public required string Issuer { get; set; }
+    public required string SetupToken { get; set; } 
 }

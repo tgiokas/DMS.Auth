@@ -14,17 +14,17 @@ public class User
     public bool IsMfaEnabled { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    private User() { }
+    //private User() { }
 
-    public User(string username, string email, string agencyId)
-    {
-        Id = Guid.NewGuid();
-        Username = username;
-        Email = email;
-        AgencyId = agencyId;
-        IsMfaEnabled = false;
-        CreatedAt = DateTime.UtcNow;
-    }
+    //public User(string username, string email, string agencyId)
+    //{
+    //    Id = Guid.NewGuid();
+    //    Username = username;
+    //    Email = email;
+    //    AgencyId = agencyId;
+    //    IsMfaEnabled = false;
+    //    CreatedAt = DateTime.UtcNow;
+    //}
 
     public void UpdateProfile(string newEmail)
     {
@@ -38,8 +38,7 @@ public class User
 
     public void EnableMfa()
     {
-        IsMfaEnabled = true;
-        // Possibly add domain events, e.g. MfaEnabledEvent
+        IsMfaEnabled = true;       
     }
 
     public void DisableMfa()

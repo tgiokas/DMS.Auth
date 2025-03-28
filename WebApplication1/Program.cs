@@ -111,9 +111,12 @@ void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
             Console.WriteLine("Extracted Roles from Token:");
             foreach (var role in roles.EnumerateArray())
             {
-                string roleValue = role.GetString().ToLower();
-                identity?.AddClaim(new Claim(ClaimTypes.Role, roleValue));
-                Console.WriteLine($" - {roleValue}");
+                string? roleValue = role.GetString()?.ToLower();
+                if (roleValue != null)
+                {
+                    identity?.AddClaim(new Claim(ClaimTypes.Role, roleValue));
+                    Console.WriteLine($" - {roleValue}");
+                }
             }
         }
         else
