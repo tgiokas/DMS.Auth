@@ -33,7 +33,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("profile")]
-    [Authorize]
+    [Authorize(Roles = "admin")]
     public IActionResult GetUserProfile(string username)
     {
         return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
@@ -52,8 +52,8 @@ public class UserController : ControllerBase
         return Ok(new { message = "User created successfully" });
     }
 
-    [HttpDelete("update/{username}")]
-    [Authorize(Policy = "AdminOnly")]
+    [HttpPut("update/{username}")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> UpdateUser([FromBody] UserUpdateDto request)
     {
         var result = await _userManagementService.UpdateUserAsync(request);
@@ -65,7 +65,7 @@ public class UserController : ControllerBase
     }
 
     [HttpDelete("delete/{username}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> DeleteUser(string username)
     {
         var result = await _userManagementService.DeleteUserAsync(username);
@@ -77,11 +77,10 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("roles/{username}")]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> GetUserRoles(string username)
     {
         var roles = await _userManagementService.GetUserRolesAsync(username);
         return Ok(roles);
     }
-
 }
