@@ -33,7 +33,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnTokenValidated = context =>
             {
-                MapKeycloakRolesToRoleClaims0(context);
+                MapKeycloakRolesToRoleClaims(context);
                 return Task.CompletedTask;
             }
         };
@@ -91,7 +91,7 @@ app.MapControllers();
 
 app.Run();
 
-void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
+void MapKeycloakRolesToRoleClaims(TokenValidatedContext context)
 {
     var user = context.Principal;
     var identity = user?.Identity as ClaimsIdentity;

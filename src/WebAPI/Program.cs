@@ -122,7 +122,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnTokenValidated = context =>
             {
-                MapKeycloakRolesToRoleClaims0(context);
+                MapKeycloakRolesToRoleClaims(context);
                 return Task.CompletedTask;
             }
         };
@@ -166,7 +166,7 @@ app.MapControllers();
 
 app.Run();
 
-void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
+void MapKeycloakRolesToRoleClaims(TokenValidatedContext context)
 {
     var user = context.Principal;
     var identity = user?.Identity as ClaimsIdentity;
@@ -205,7 +205,7 @@ void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
     }
 }
 
-//void MapKeycloakRolesToRoleClaims(TokenValidatedContext context)
+//void MapKeycloakRolesToRoleClaims2(TokenValidatedContext context)
 //{
 //    //var resourceAccess = JObject.Parse(context.Principal.FindFirst("resource_access").Value);
 //    //var clientResource = resourceAccess[context.Principal.FindFirstValue("aud")];

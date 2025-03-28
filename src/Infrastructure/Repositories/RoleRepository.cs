@@ -13,7 +13,7 @@ public class RoleRepository : IRoleRepository
     public RoleRepository(ApplicationDbContext dbContext)
     {
         _dbContext = dbContext;
-    }
+    }  
 
     public Task<Role?> GetByIdAsync(Guid id)
     {
