@@ -23,8 +23,7 @@ public class RabbitMqAuditEventPublisher : IAuditEventPublisher
         {
             EventType = "UserCreated",
             UserId = user.Id,
-            user.Username,
-            user.AgencyId,
+            user.Username,            
             Timestamp = DateTime.UtcNow
         };
 
