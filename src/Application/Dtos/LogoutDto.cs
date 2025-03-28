@@ -2,5 +2,5 @@
 
 public class LogoutDto
 {
-    public string? RefreshToken { get; set; }
+    public required string RefreshToken { get; set; }
 }

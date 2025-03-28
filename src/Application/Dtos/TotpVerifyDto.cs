@@ -2,7 +2,7 @@
 
 public class TotpVerifyDto
 {
-    public string Username { get; set; }
-    public string Code { get; set; }
-    public string? SetupToken { get; set; }
+    public required string Username { get; set; }
+    public required string Code { get; set; }
+    public required string SetupToken { get; set; }
 }

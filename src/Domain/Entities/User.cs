@@ -8,8 +8,8 @@ public class User
     public Guid Id { get; private set; }
 
     [Required]
-    public string Username { get; private set; }
-    public string Email { get; private set; }
+    public string Username { get; private set; } = string.Empty;
+    public string Email { get; private set; } = string.Empty;
     public string? AgencyId { get; private set; }
     public bool IsMfaEnabled { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -27,7 +27,7 @@ public class User
     }
 
     public void UpdateProfile(string newEmail)
-    {       
+    {
         if (string.IsNullOrWhiteSpace(newEmail) || !newEmail.Contains("@"))
         {
             throw new InvalidOperationException("Invalid email address.");

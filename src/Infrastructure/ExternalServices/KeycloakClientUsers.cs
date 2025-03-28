@@ -12,7 +12,9 @@ public partial class KeycloakClient : IKeycloakClient
 {     
     public async Task<List<KeycloakUserDto>> GetUsersAsync()
     {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        var adminToken = await GetAdminAccessTokenAsync();
+
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
 
         var response = await _httpClient.GetAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/users");
 
@@ -22,8 +24,8 @@ public partial class KeycloakClient : IKeycloakClient
             return new List<KeycloakUserDto>();
         }
 
-        var content = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<KeycloakUserDto>>(content);
+        var jsonResponse = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse);
     }
 
     public async Task<string?> GetUserIdByUsernameAsync(string username)
@@ -93,7 +95,7 @@ public partial class KeycloakClient : IKeycloakClient
 
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Access_token);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken?.Access_token);
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/users", content);
 
@@ -140,9 +142,11 @@ public partial class KeycloakClient : IKeycloakClient
             enabled = request.IsEnabled
         };
 
+        var adminToken = await GetAdminAccessTokenAsync();
+
         var content = new StringContent(JsonSerializer.Serialize(updateData), Encoding.UTF8, "application/json");
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
 
         var response = await _httpClient.PutAsync(requestUrl, content);
 
@@ -164,9 +168,11 @@ public partial class KeycloakClient : IKeycloakClient
             return false;
         }
 
+        var adminToken = await GetAdminAccessTokenAsync();
+
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}";
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
 
         var response = await _httpClient.DeleteAsync(requestUrl);
 

@@ -94,9 +94,9 @@ app.Run();
 void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
 {
     var user = context.Principal;
-    var identity = user.Identity as ClaimsIdentity;
+    var identity = user?.Identity as ClaimsIdentity;
 
-    var realmAccessClaim = identity.FindFirst("realm_access");
+    var realmAccessClaim = identity?.FindFirst("realm_access");
     if (realmAccessClaim == null)
     {
         Console.WriteLine("realm_access claim not found in token.");
@@ -112,7 +112,7 @@ void MapKeycloakRolesToRoleClaims0(TokenValidatedContext context)
             foreach (var role in roles.EnumerateArray())
             {
                 string roleValue = role.GetString().ToLower();
-                identity.AddClaim(new Claim(ClaimTypes.Role, roleValue));
+                identity?.AddClaim(new Claim(ClaimTypes.Role, roleValue));
                 Console.WriteLine($" - {roleValue}");
             }
         }

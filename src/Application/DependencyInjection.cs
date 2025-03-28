@@ -1,7 +1,9 @@
 ﻿using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Services;
 
-namespace Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace DMS.Auth.Application.DependencyInjection;
 
 public static class DependencyInjection
 {

@@ -27,8 +27,8 @@ namespace DMS.Auth.Application.Dtos
         [JsonPropertyName("temporary")]
         public bool? Temporary { get; set; }
         [JsonPropertyName("type")]
-        public string Type { get; set; }
+        public string? Type { get; set; }
         [JsonPropertyName("value")]
-        public string Value { get; set; }
+        public string? Value { get; set; }
     }
 }

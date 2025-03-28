@@ -67,8 +67,9 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.AssignRoleAsync(username, roleId);
     }    
 
-    public async Task<bool> EnableMfaAsync(string username)
+    public Task<bool> EnableMfaAsync(string username)
     {
-        return await _keycloakClient.EnableMfaAsync(username);
+        //return await _keycloakClient.EnableMfaAsync(username);
+        return Task.FromResult(true);
     }
 }

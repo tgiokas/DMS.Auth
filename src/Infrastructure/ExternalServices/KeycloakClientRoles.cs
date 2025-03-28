@@ -19,9 +19,11 @@ public partial class KeycloakClient : IKeycloakClient
             return new List<KeycloakRoleDto>();
         }
 
+        var adminToken = await GetAdminAccessTokenAsync();       
+
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}/role-mappings/realm";
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
 
         var response = await _httpClient.GetAsync(requestUrl);
 
@@ -31,8 +33,17 @@ public partial class KeycloakClient : IKeycloakClient
             return new List<KeycloakRoleDto>();
         }
 
-        var content = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<KeycloakRoleDto>>(content);
+        var jsonResponse = await response.Content.ReadAsStringAsync();
+
+        var roles = JsonSerializer.Deserialize<List<KeycloakRoleDto>>(jsonResponse);
+
+        if (roles == null)
+        {
+            _logger.LogWarning("Empty response body while fetching users from Keycloak.");
+            return new List<KeycloakRoleDto>();
+        }
+
+        return roles;
     }
 
     public async Task<bool> CreateRoleAsync(string roleName, string roleDescr, string realm)
@@ -46,9 +57,11 @@ public partial class KeycloakClient : IKeycloakClient
             ContainerId = realm
         };
 
+        var adminToken = await GetAdminAccessTokenAsync();
+
         var content = new StringContent(JsonSerializer.Serialize(newRole), Encoding.UTF8, "application/json");
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/roles", content);
 
@@ -70,7 +83,6 @@ public partial class KeycloakClient : IKeycloakClient
             return false;
         }
 
-
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}/role-mappings/realm";
 
         var roleMapping = new List<object>
@@ -78,9 +90,11 @@ public partial class KeycloakClient : IKeycloakClient
             new { id = roleId, name = "custom_role" }
         };
 
+        var adminToken = await GetAdminAccessTokenAsync();
+
         var content = new StringContent(JsonSerializer.Serialize(roleMapping), Encoding.UTF8, "application/json");
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
 
         var response = await _httpClient.PostAsync(requestUrl, content);
 

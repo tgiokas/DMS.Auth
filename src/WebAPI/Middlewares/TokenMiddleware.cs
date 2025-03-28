@@ -22,7 +22,7 @@ public class TokenMiddleware
 
     public static class TokenHelper
     {
-        public static string ExtractAccessToken(HttpContext httpContext)
+        public static string? ExtractAccessToken(HttpContext httpContext)
         {
             var authorizationHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
             if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer "))

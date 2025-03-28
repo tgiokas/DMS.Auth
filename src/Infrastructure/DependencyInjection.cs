@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 using DMS.Auth.Application.Interfaces;
@@ -8,7 +9,7 @@ using DMS.Auth.Domain.Interfaces;
 using DMS.Auth.Infrastructure.Persistence;
 using DMS.Auth.Infrastructure.Repositories;
 
-namespace Microsoft.Extensions.DependencyInjection;
+namespace DMS.Auth.Infrastructure.DependencyInjection;
 
 public static class DependencyInjection
 {

@@ -46,7 +46,7 @@ public class RabbitMqAuditEventPublisher : IAuditEventPublisher
     private async Task PublishMessageAsync(object messageObj)
     {
         using var channel = await _connection.CreateChannelAsync();
-        channel.ExchangeDeclareAsync(exchange: "audit-exchange", type: "topic", durable: true);
+        await channel.ExchangeDeclareAsync(exchange: "audit-exchange", type: "topic", durable: true);
 
         var json = JsonSerializer.Serialize(messageObj);
         var body = Encoding.UTF8.GetBytes(json);

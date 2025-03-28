@@ -6,9 +6,7 @@ public interface IKeycloakClient
 {   
     Task<TokenDto?> GetUserAccessTokenAsync(string username, string password);
     Task<TokenDto?> GetAdminAccessTokenAsync();
-    Task<TokenDto?> RefreshTokenAsync(string refreshToken);
-
-    Task<bool> EnableMfaAsync(string username);
+    Task<TokenDto?> RefreshTokenAsync(string refreshToken);    
     Task<bool> LogoutAsync(string refreshToken);
     Task<string> GsisLoginUrl();
     Task<TokenDto?> GsisCallback(string code);

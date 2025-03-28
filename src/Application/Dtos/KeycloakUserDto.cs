@@ -5,11 +5,11 @@ namespace DMS.Auth.Application.Dtos;
 public class KeycloakUserDto
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string? Id { get; set; }
     [JsonPropertyName("createdTimestamp")]
     public long CreatedTimestamp { get; set; }
     [JsonPropertyName("username")]
-    public string UserName { get; set; }
+    public string? UserName { get; set; }
     [JsonPropertyName("enabled")]
     public bool? Enabled { get; set; }
     [JsonPropertyName("totp")]
