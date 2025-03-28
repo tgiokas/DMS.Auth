@@ -12,13 +12,12 @@ public class DocumentController : ControllerBase
     [Authorize(Roles = "reader, writer")]
     //[Authorize(Policy = "AdminOrUser")]
     public IActionResult GetDocument(int id)
-    {
-        // This user can read
+    {        
         return Ok($"Document content for #{id}");
     }
 
     [HttpPost("Create")]
-    [Authorize(Roles = "writer")] // Only writer can create or edit
+    [Authorize(Roles = "writer")] // Only writer can create
     public IActionResult CreateDocument()
     {
         // 403 if user is only 'reader'
@@ -26,7 +25,7 @@ public class DocumentController : ControllerBase
     }
 
     [HttpPost("Share")]
-    [Authorize(Roles = "writer")] // Only writer can share or edit
+    [Authorize(Roles = "writer")] // Only writer can share
     //[Authorize(Policy = "AdminOrUser")]
     public IActionResult ShareDocument(int id)
     {
