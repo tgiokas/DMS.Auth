@@ -21,9 +21,6 @@
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
-		<None Include="wwwroot\htmlpage.html">
-		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -44,5 +41,9 @@
 		<ProjectReference Include="..\Application\DMS.Auth.Application.csproj" />
 		<ProjectReference Include="..\Infrastructure\DMS.Auth.Infrastructure.csproj" />
 	</ItemGroup>
+
+	<!--<ItemGroup>
+	  <Folder Include="wwwroot\" />
+	</ItemGroup>-->
 
 </Project>
