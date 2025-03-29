@@ -1,23 +1,25 @@
 ﻿# DMS.Auth microservice with Keycloak
 
 ## Overview
-
 **DMS.Auth** is a standalone microservice for authentication and authorization, built using .NET 9 and integrated with **Keycloak**. 
 While it is part of the broader **Document Management System (DMS)**, it is designed to work **independently** and can be used in **any modern system** 
 that requires secure identity management. 
-It integrates with Keycloak for identity, access and user management, and supports both user and machine-to-machine authentication.
+It integrates with Keycloak for identity access and user management, and supports both user and machine-to-machine authentication.
 
 ## Features
-
 It will support:
 
 ✅ User Authentication / Authorization
 
-✅ Custom MFA flows (like TOTP)
+✅ Role-Based Access Control (RBAC)
 
-✅ Email-based Magic Link Authentication
+✅ Multi-Factor Authentication (MFA)
+
+✅ Email-based Link Authentication
 
 ✅ GSIS (www1.gsis.gr) Integration
+
+✅ User Provisioning (Auto-Creating Users in Keycloak)
 
 ✅ GDPR compliance through data anonymization.
 
@@ -28,14 +30,12 @@ It will support:
 ---
 
 ## 🧭 MFA-First Login Flow with TOTP
-
 This microservice handles **authentication and MFA (TOTP)** using:
 
 - Keycloak (for token issuance and identity provider)
 - TOTP (Time-based One-Time Password) as the MFA method
 - Custom UI (not using Keycloak login screens)
 - `IMemoryCache` for secure temporary state
-- Clean Architecture with SOLID principles
 
 ### 🔐 TOTP Setup (One-time per user)
 1. `POST /mfa/setup`  
@@ -65,8 +65,10 @@ This microservice handles **authentication and MFA (TOTP)** using:
 
 ---
 
-## 🔐 Security Notes
+## 🗃️ Database: PostgreSQL
+This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSecrets
 
+## 🔐 Security Notes
 - ✅ Passwords are stored **temporarily** in-memory (not persisted)
 - ✅ Token is only issued **after MFA verification passes**
 - ✅ All secrets and attempts auto-expire in 5 minutes
@@ -75,9 +77,9 @@ This microservice handles **authentication and MFA (TOTP)** using:
 ---
 
 ## 🚀 Tech Stack
-
 - .NET 8
 - Keycloak
+- PostgreSQL
 - Otp.NET
 - IMemoryCache
-- Clean Architecture
+- Clean Architecture (SOLID)
