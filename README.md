@@ -7,6 +7,8 @@ While it is part of the broader **Document Management System (DMS)**, it is desi
 that requires secure identity management. 
 It integrates with Keycloak for identity access and user management, and supports both user and machine-to-machine authentication.
 
+---
+
 ## Features
 
 🔒 User Authentication / Authorization ✅
@@ -28,6 +30,30 @@ It integrates with Keycloak for identity access and user management, and support
 📊 Admin Dashboard (optional UI)
 
 ---
+
+## 🗃️ Database: PostgreSQL
+
+This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSecrets
+
+---
+
+## 🔐 Security Notes
+
+- ✅ Passwords are stored **temporarily** in-memory (not persisted)
+- ✅ Token is only issued **after MFA verification passes**
+- ✅ All secrets and attempts auto-expire in 5 minutes
+- ❌ No sensitive data is logged or serialized
+
+---
+
+## 🚀 Tech Stack
+
+- .NET 9
+- Keycloak
+- PostgreSQL
+- Otp.NET
+- IMemoryCache
+- Clean Architecture (SOLID)
 
 ## 🧭 MFA-First Login Flow with TOTP
 
@@ -62,28 +88,3 @@ This microservice handles **authentication and MFA (TOTP)** using:
    → Validates 6-digit TOTP code  
    → If correct, issues Keycloak token using cached login  
    → Returns `access_token`, `refresh_token`
-
-
----
-
-## 🗃️ Database: PostgreSQL
-
-This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSecrets
-
-## 🔐 Security Notes
-
-- ✅ Passwords are stored **temporarily** in-memory (not persisted)
-- ✅ Token is only issued **after MFA verification passes**
-- ✅ All secrets and attempts auto-expire in 5 minutes
-- ❌ No sensitive data is logged or serialized
-
----
-
-## 🚀 Tech Stack
-
-- .NET 9
-- Keycloak
-- PostgreSQL
-- Otp.NET
-- IMemoryCache
-- Clean Architecture (SOLID)
