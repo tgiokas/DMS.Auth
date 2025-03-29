@@ -7,16 +7,14 @@ using DMS.Auth.Application.Dtos;
 namespace DMS.Auth.WebApi;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
-    private readonly IUserManagementService _userManagementService;
 
     public AuthController(IAuthenticationService authenticationService, IUserManagementService userManagementService)
     {
         _authenticationService = authenticationService;
-        _userManagementService = userManagementService;
     }
 
     [HttpPost("login")]
@@ -46,8 +44,8 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] LogoutDto request)
     {
-        var result = await _authenticationService.LogoutAsync(request.RefreshToken);
-        if (!result)
+        var response = await _authenticationService.LogoutAsync(request.RefreshToken);
+        if (!response)
         {
             return BadRequest(new { message = "Failed to logout" });
         }

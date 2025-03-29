@@ -21,15 +21,12 @@ public class UserController : ControllerBase
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetUsers()
     {
-        var users = await _userManagementService.GetUsersAsync();
-        return Ok(users);
-    }
-
-    [HttpGet("{id}")]
-    [Authorize(Roles = "admin")]
-    public IActionResult GetUserById(int id)
-    {
-        return Ok(new { Id = id, Username = "user" + id, Email = $"user{id}@example.com" });
+        var response = await _userManagementService.GetUsersAsync();
+        if (response == null)
+        {
+            return BadRequest(new { message = "Failed to get Users" });
+        }
+        return Ok(response);
     }
 
     [HttpGet("profile")]
@@ -41,11 +38,9 @@ public class UserController : ControllerBase
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateUser([FromBody] UserCreateDto request)
-    {
-        var accessToken = HttpContext.Items["AccessToken"] as string;
-
-        var result = await _userManagementService.CreateUserAsync(request);
-        if (!result)
+    {        
+        var response = await _userManagementService.CreateUserAsync(request);
+        if (!response)
         {
             return BadRequest(new { message = "Failed to create user" });
         }
@@ -56,8 +51,8 @@ public class UserController : ControllerBase
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> UpdateUser([FromBody] UserUpdateDto request)
     {
-        var result = await _userManagementService.UpdateUserAsync(request);
-        if (!result)
+        var response = await _userManagementService.UpdateUserAsync(request);
+        if (!response)
         {
             return BadRequest(new { message = "Failed to update user" });
         }
@@ -68,8 +63,8 @@ public class UserController : ControllerBase
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> DeleteUser(string username)
     {
-        var result = await _userManagementService.DeleteUserAsync(username);
-        if (!result)
+        var response = await _userManagementService.DeleteUserAsync(username);
+        if (!response)
         {
             return BadRequest(new { message = "Failed to delete user" });
         }
@@ -80,7 +75,11 @@ public class UserController : ControllerBase
     [Authorize(Roles = "admin")]
     public async Task<IActionResult> GetUserRoles(string username)
     {
-        var roles = await _userManagementService.GetUserRolesAsync(username);
-        return Ok(roles);
+        var response = await _userManagementService.GetUserRolesAsync(username);
+        if (response == null)
+        {
+            return BadRequest(new { message = "Failed to get Roles" });
+        }
+        return Ok(response);
     }
 }
