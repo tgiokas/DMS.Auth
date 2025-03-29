@@ -13,11 +13,13 @@ public class RoleRepository : IRoleRepository
     public RoleRepository(ApplicationDbContext dbContext)
     {
         _dbContext = dbContext;
-    }  
+    }
 
-    public Task<Role?> GetByIdAsync(Guid id)
+    public async Task<Role?> GetByIdAsync(Guid id)
     {
-        throw new NotImplementedException();
+        return await _dbContext.Roles
+            .Include(r => r.Permissions)
+            .FirstOrDefaultAsync(r => r.Id == id);
     }
 
     public async Task<Role?> GetByNameAsync(string roleName)
@@ -39,8 +41,9 @@ public class RoleRepository : IRoleRepository
         await _dbContext.SaveChangesAsync();
     }
 
-    public Task DeleteAsync(Role user)
+    public async Task DeleteAsync(Role role)
     {
-        throw new NotImplementedException();
+        _dbContext.Roles.Remove(role);
+        await _dbContext.SaveChangesAsync();
     }
 }

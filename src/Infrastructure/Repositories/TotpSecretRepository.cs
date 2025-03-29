@@ -15,7 +15,7 @@ public class TotpSecretRepository : ITotpRepository
         _dbContext = context;
     }
 
-    public async Task SaveAsync(string userId, string base32Secret)
+    public async Task AddAsync(string userId, string base32Secret)
     {
         try
         {

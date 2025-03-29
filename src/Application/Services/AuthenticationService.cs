@@ -1,6 +1,8 @@
 ﻿using System.Web;
 using Microsoft.Extensions.Logging;
+
 using OtpNet;
+
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Interfaces;
@@ -48,10 +50,8 @@ public class AuthenticationService : IAuthenticationService
             return LoginResult.Ok(new
             {
                 mfa_required = false,
-                setup_token = tokenResponse
-            });
-
-            //return LoginResult.Ok(JsonSerializer.Deserialize<object>(tokenResponse.Access_token));
+                token_response = tokenResponse
+            });            
         }
         else
         {
@@ -68,7 +68,7 @@ public class AuthenticationService : IAuthenticationService
             return LoginResult.Ok(new
             {
                 mfa_required = true,
-                setup_token = tokenResponse
+                setup_token = setupToken
             });
         }
     }        
@@ -123,7 +123,7 @@ public class AuthenticationService : IAuthenticationService
         if (userId == null) return false;
 
         // 3. Save the verified secret to the database for this user
-        await _secretRepo.SaveAsync(userId, entry.Secret);        
+        await _secretRepo.AddAsync(userId, entry.Secret);        
 
         // 5. Clean up setup cache
         _cache.RemoveSecret(setupToken);

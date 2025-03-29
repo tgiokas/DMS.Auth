@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
+
 using AutoMapper;
+
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Interfaces;
@@ -15,7 +17,10 @@ public class UserManagementService : IUserManagementService
     private readonly IMapper _mapper;
     //private readonly ILogger<UserManagementService> _logger;
 
-    public UserManagementService(IKeycloakClient keycloakClient, IUserRepository userRepository, IConfiguration configuration, IMapper mapper)
+    public UserManagementService(IKeycloakClient keycloakClient, 
+        IUserRepository userRepository, 
+        IConfiguration configuration, 
+        IMapper mapper)
     {
         _keycloakClient = keycloakClient;
         _userRepository = userRepository;

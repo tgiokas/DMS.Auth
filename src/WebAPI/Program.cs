@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+
 using RabbitMQ.Client;
 
 using DMS.Auth.Application.DependencyInjection;
@@ -10,9 +12,19 @@ using DMS.Auth.Application.Mappings;
 using DMS.Auth.Infrastructure.DependencyInjection;
 using DMS.Auth.Infrastructure.ExternalServices;
 using DMS.Auth.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
+using Serilog;
+using DMS.Auth.WebApi.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
@@ -109,7 +121,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidIssuer = builder.Configuration["Keycloak:Authority"],            
             ValidateAudience = true,
-            ValidAudiences = new[] { "dms-auth-app", "dms-document-app"}, // Allow multiple audiences
+            ValidAudiences = new[] { "dms-auth-app"}, // Allow multiple audiences
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
@@ -145,6 +157,10 @@ if (app.Environment.IsDevelopment())
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
 }
+
+//app.UseSerilogRequestLogging(); // Enable Serilog request logging
+
+app.UseMiddleware<LogMiddleware>(); // Enable Serilog request logging
 
 app.UseAuthentication();
 app.UseAuthorization();

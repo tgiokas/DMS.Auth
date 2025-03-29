@@ -28,8 +28,13 @@ public class UserRepository : IUserRepository
 
     public async Task AddAsync(User user)
     {
-        await _dbContext.Users.AddAsync(user);
-        await _dbContext.SaveChangesAsync();
+        var existing = await _dbContext.Users.FirstOrDefaultAsync(x => x.Username == user.Username);
+
+        if (existing is null)
+        {
+            await _dbContext.Users.AddAsync(user);
+            await _dbContext.SaveChangesAsync();
+        }        
     }
 
     public async Task UpdateAsync(User user)
@@ -44,4 +49,3 @@ public class UserRepository : IUserRepository
         await _dbContext.SaveChangesAsync();
     }
 }
-

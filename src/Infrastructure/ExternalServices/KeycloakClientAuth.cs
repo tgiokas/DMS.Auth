@@ -31,7 +31,7 @@ public partial class KeycloakClient : IKeycloakClient
         _realm = _configuration["Keycloak:Realm"] ?? throw new ArgumentNullException("Keycloak:Realm");
         _clientId = _configuration["Keycloak:ClientId"] ?? throw new ArgumentNullException("Keycloak:ClientId");
         _clientSecret = _configuration["Keycloak:ClientSecret"] ?? throw new ArgumentNullException("Keycloak:ClientSecret");
-        _redirectUri = _configuration["Keycloak:RedirectUrl"] ?? throw new ArgumentNullException("Keycloak:RedirectUrl");
+        _redirectUri = _configuration["Keycloak:RedirectUrl"] ?? "";
     }
 
     // Authenticate Public Users (Frontend Apps) using Password Grant (Return a JWT token).
