@@ -30,10 +30,15 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("profile")]
-    [Authorize(Roles = "admin")]
-    public IActionResult GetUserProfile(string username)
+    //[Authorize(Roles = "admin")]
+    public async Task<IActionResult> GetUserProfile(string username)
     {
-        return Ok(new { Id = 1, Username = username, Email = "testuser@example.com" });
+        var response = await _userManagementService.GetUserProfile(username);
+        if (response == null)
+        {
+            return BadRequest(new { message = "Failed to get Users" });
+        }
+        return Ok(response);
     }
 
     [HttpPost("create")]

@@ -15,5 +15,6 @@
     </None>
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
+    <None Include="src\Infrastructure\ExternalServices\BaseApiClient.cs" />
   </ItemGroup>
 </Project>

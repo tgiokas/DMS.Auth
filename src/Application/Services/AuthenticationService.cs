@@ -159,12 +159,9 @@ public class AuthenticationService : IAuthenticationService
         _cache.RemoveLoginAttempt(setupToken);
 
         return LoginResult.Ok(new
-        {
-            mfa_required = true,
+        {            
             setup_token = tokenResponse
         });        
-
-        //return LoginResult.Ok(tokenResponse);
     }
 
     /// Refreshes a user's access token.

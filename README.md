@@ -55,6 +55,8 @@ This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSe
 - IMemoryCache
 - Clean Architecture (SOLID)
 
+---
+
 ## 🧭 MFA-First Login Flow with TOTP
 
 This microservice handles **authentication and MFA (TOTP)** using:
@@ -65,6 +67,7 @@ This microservice handles **authentication and MFA (TOTP)** using:
 - `IMemoryCache` for secure temporary state
 
 ### 🔐 TOTP Setup (One-time per user)
+
 1. `POST /mfa/setup`  
    → Generates TOTP secret, QR code URI, and setup token  
    → Stores temporary secret in `IMemoryCache`
@@ -74,9 +77,9 @@ This microservice handles **authentication and MFA (TOTP)** using:
    → If correct, stores TOTP secret to database  
    → Removes from cache
 
----
 
 ### 🔑 MFA Login Flow
+
 1. `POST /auth/login`  
    → Validates username/password via Keycloak  
    → If MFA required:

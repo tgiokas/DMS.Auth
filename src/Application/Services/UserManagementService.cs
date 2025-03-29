@@ -28,15 +28,19 @@ public class UserManagementService : IUserManagementService
         _mapper = mapper;
     }
 
-    public async Task<List<KeycloakUserDto>> GetUsersAsync()
+    public async Task<List<KeycloakUser>> GetUsersAsync()
     {
         return await _keycloakClient.GetUsersAsync();
     }
 
-    //public async Task<KeycloakUserDto> GetUserProfile(string username)
-    //{
-    //    return await _keycloakClient.GetUserIdByUsernameAsync(username);
-    //}
+    public async Task<KeycloakCredential?> GetUserProfile(string username)
+    {
+        var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
+        if (userId != null) {
+            return await _keycloakClient.GetUserCredentialsAsync(userId);            
+        }
+        return null;
+    }
 
     public async Task<bool> CreateUserAsync(UserCreateDto request)
     {
@@ -62,7 +66,7 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.DeleteUserAsync(username);
     }
 
-    public async Task<List<KeycloakRoleDto>> GetUserRolesAsync(string username)
+    public async Task<List<KeycloakRole>> GetUserRolesAsync(string username)
     {
         return await _keycloakClient.GetUserRolesAsync(username);
     }

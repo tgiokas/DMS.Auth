@@ -11,14 +11,14 @@ public interface IKeycloakClient
     Task<string> GsisLoginUrl();
     Task<TokenDto?> GsisCallback(string code);
 
-    Task<List<KeycloakUserDto>> GetUsersAsync();
+    Task<List<KeycloakUser>> GetUsersAsync();
     Task<string?> GetUserIdByUsernameAsync(string username);
-    Task<Credential?> GetUserCredentialsAsync(string userId);
+    Task<KeycloakCredential?> GetUserCredentialsAsync(string userId);
     Task<bool> CreateUserAsync(string username, string email, string password);
     Task<bool> UpdateUserAsync(UserUpdateDto request);
     Task<bool> DeleteUserAsync(string username);
 
-    Task<List<KeycloakRoleDto>> GetUserRolesAsync(string username);
+    Task<List<KeycloakRole>> GetUserRolesAsync(string username);
     Task<bool> CreateRoleAsync(string roleName, string roleDescr, string realm);
     Task<bool> AssignRoleAsync(string username, string roleId);
 }

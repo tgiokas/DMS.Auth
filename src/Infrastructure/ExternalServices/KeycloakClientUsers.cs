@@ -10,7 +10,7 @@ namespace DMS.Auth.Infrastructure.ExternalServices;
 
 public partial class KeycloakClient : IKeycloakClient
 {
-    public async Task<List<KeycloakUserDto>> GetUsersAsync()
+    public async Task<List<KeycloakUser>> GetUsersAsync()
     {
         var adminToken = await GetAdminAccessTokenAsync();
 
@@ -21,17 +21,17 @@ public partial class KeycloakClient : IKeycloakClient
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("Failed to fetch users from Keycloak: {Response}", await response.Content.ReadAsStringAsync());
-            return new List<KeycloakUserDto>();
+            return new List<KeycloakUser>();
         }
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
 
-        var users = JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse);
+        var users = JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse);
 
         if (users == null)
         {
             _logger.LogWarning("Empty response body while fetching users from Keycloak.");
-            return new List<KeycloakUserDto>();
+            return new List<KeycloakUser>();
         }
 
         return users;
@@ -69,7 +69,7 @@ public partial class KeycloakClient : IKeycloakClient
             //    PropertyNameCaseInsensitive = true
             //});
 
-            var users = JsonSerializer.Deserialize<List<KeycloakUserDto>>(jsonResponse);
+            var users = JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse);
 
             return users?.FirstOrDefault()?.Id;
         }
@@ -80,7 +80,7 @@ public partial class KeycloakClient : IKeycloakClient
         }
     }
 
-    public async Task<Credential?> GetUserCredentialsAsync(string userId)
+    public async Task<KeycloakCredential?> GetUserCredentialsAsync(string userId)
     {
         var adminToken = await GetAdminAccessTokenAsync();
 
@@ -102,26 +102,23 @@ public partial class KeycloakClient : IKeycloakClient
             return null;
         }
 
-        var credentials = JsonSerializer.Deserialize<Credential>(jsonResponse);
+        var credentials = JsonSerializer.Deserialize<KeycloakCredential>(jsonResponse);
 
         return credentials;
     }
 
     public async Task<bool> CreateUserAsync(string username, string email, string password)
     {
-        var newUser = new KeycloakUserDto
+        var newUser = new KeycloakUser
         {
             UserName = username,
             Email = email,
-            FirstName = "Test2",
-            LastName = "User",
             Enabled = true,
             EmailVerified = true,
-            //RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL", "CONFIGURE_TOTP" }),
-            //RequiredActions = new ReadOnlyCollection<string>(new List<string> { "VERIFY_EMAIL" }),
+            //RequiredActions = new List<string> { "VERIFY_EMAIL", "CONFIGURE_TOTP" },
             Credentials = new[]
             {
-                new Credential { Type = "password", Value = password, Temporary = false }
+                new KeycloakCredential { Type = "password", Value = password, Temporary = false }
             }
         };
 
@@ -152,8 +149,7 @@ public partial class KeycloakClient : IKeycloakClient
             var createdUserId = locationSegments.LastOrDefault();
 
             var id = locationSegments.Last();
-
-            //await FetchMfaQrCode(createdUserId);
+            
             await SendVerifyEmail(createdUserId);
         }
 
@@ -173,8 +169,8 @@ public partial class KeycloakClient : IKeycloakClient
 
         var updateData = new
         {
-            username = request.NewUsername ?? request.Username, // Keep old username if not changing
-            email = request.NewEmail ?? request.Email, // Keep old email if not changing
+            username = request.NewUsername ?? request.Username,
+            email = request.NewEmail ?? request.Email,
             enabled = request.IsEnabled
         };
 

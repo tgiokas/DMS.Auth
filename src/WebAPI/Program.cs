@@ -75,10 +75,6 @@ builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 
-//builder.Services.AddSwaggerGen();
-
-//builder.Services.AddKeycloakAuthentication(Config);
-
 //builder.Services.AddSwaggerGen(x =>
 //{
 //    x.SwaggerDoc("v1", new OpenApiInfo { Title = "Api", Version = "v1" });
@@ -158,9 +154,7 @@ if (app.Environment.IsDevelopment())
     dbContext.Database.Migrate();
 }
 
-//app.UseSerilogRequestLogging(); // Enable Serilog request logging
-
-app.UseMiddleware<LogMiddleware>(); // Enable Serilog request logging
+app.UseMiddleware<LogMiddleware>(); // Enable Serilog logging for API requests
 
 app.UseAuthentication();
 app.UseAuthorization();

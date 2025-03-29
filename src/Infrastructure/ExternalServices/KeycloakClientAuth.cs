@@ -39,22 +39,19 @@ public partial class KeycloakClient : IKeycloakClient
     {
         var content = new FormUrlEncodedContent(new[]
         {
-                    new KeyValuePair<string, string>("grant_type", "password"),
-                    new KeyValuePair<string, string>("client_id", _clientId),
-                    new KeyValuePair<string, string>("client_secret", _clientSecret),
-                    new KeyValuePair<string, string>("username", username),
-                    new KeyValuePair<string, string>("password", password),
-                    //new KeyValuePair<string, string>("scope", "openid")
-                });
+            new KeyValuePair<string, string>("grant_type", "password"),
+            new KeyValuePair<string, string>("client_id", _clientId),
+            new KeyValuePair<string, string>("client_secret", _clientSecret),
+            new KeyValuePair<string, string>("username", username),
+            new KeyValuePair<string, string>("password", password),
+            //new KeyValuePair<string, string>("scope", "openid")
+        });
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
         if (!response.IsSuccessStatusCode)
             return null;
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
-
-        //var tokenJson = JsonSerializer.Deserialize<JsonElement>(jsonResponse);
-        //return tokenJson.GetProperty("access_token").GetString();
 
         return JsonSerializer.Deserialize<TokenDto>(jsonResponse);
     }
@@ -64,10 +61,10 @@ public partial class KeycloakClient : IKeycloakClient
     {
         var content = new FormUrlEncodedContent(new[]
         {
-                    new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                    new KeyValuePair<string, string>("client_id", _clientId),
-                    new KeyValuePair<string, string>("client_secret", _clientSecret),
-                });
+            new KeyValuePair<string, string>("grant_type", "client_credentials"),
+            new KeyValuePair<string, string>("client_id", _clientId),
+            new KeyValuePair<string, string>("client_secret", _clientSecret),
+        });
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
         if (!response.IsSuccessStatusCode)
@@ -82,11 +79,11 @@ public partial class KeycloakClient : IKeycloakClient
     {
         var content = new FormUrlEncodedContent(new[]
         {
-                    new KeyValuePair<string, string>("grant_type", "refresh_token"),
-                    new KeyValuePair<string, string>("client_id", _clientId),
-                    new KeyValuePair<string, string>("client_secret", _clientSecret),
-                    new KeyValuePair<string, string>("refresh_token", refreshToken)
-                });
+            new KeyValuePair<string, string>("grant_type", "refresh_token"),
+            new KeyValuePair<string, string>("client_id", _clientId),
+            new KeyValuePair<string, string>("client_secret", _clientSecret),
+            new KeyValuePair<string, string>("refresh_token", refreshToken)
+        });
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
         if (!response.IsSuccessStatusCode) return null;
@@ -100,10 +97,10 @@ public partial class KeycloakClient : IKeycloakClient
     {
         var content = new FormUrlEncodedContent(new[]
         {
-                    new KeyValuePair<string, string>("client_id", _clientId),
-                    new KeyValuePair<string, string>("client_secret", _clientSecret),
-                    new KeyValuePair<string, string>("refresh_token", refreshToken)
-                });
+            new KeyValuePair<string, string>("client_id", _clientId),
+            new KeyValuePair<string, string>("client_secret", _clientSecret),
+            new KeyValuePair<string, string>("refresh_token", refreshToken)
+        });
 
         var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/logout", content);
 
@@ -114,8 +111,7 @@ public partial class KeycloakClient : IKeycloakClient
         }
 
         return true;
-    }
-        
+    }        
 
     private async Task<bool> SendVerifyEmail(string? userId, string? adminToken = null)
     {

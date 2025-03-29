@@ -2,7 +2,7 @@
 
 namespace DMS.Auth.Application.Dtos;
 
-public class KeycloakUserDto
+public class KeycloakUser
 {
     [JsonPropertyName("id")]
     public string? Id { get; set; }
@@ -33,7 +33,7 @@ public class KeycloakUserDto
     public IEnumerable<string>? DisableableCredentialTypes { get; set; }
 
     [JsonPropertyName("credentials")]
-    public IEnumerable<Credential>? Credentials { get; set; }
+    public IEnumerable<KeycloakCredential>? Credentials { get; set; }
 }
 
 public class UserAccess
