@@ -12,11 +12,17 @@ It integrates with Keycloak for identity, access and user management, and suppor
 It will support:
 
 ✅ User Authentication / Authorization
+
 ✅ Custom MFA flows (like TOTP)
+
 ✅ Email-based Magic Link Authentication
+
 ✅ GSIS (www1.gsis.gr) Integration
+
 ✅ GDPR compliance through data anonymization.
+
 ✅ Social Logins: (e.g. Google, Facebook, Apple ID)
+
 ✅ Admin Dashboard (optional UI)
 
 ---
