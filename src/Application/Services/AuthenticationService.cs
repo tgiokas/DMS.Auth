@@ -55,7 +55,7 @@ public class AuthenticationService : IAuthenticationService
         }
         else
         {
-            // 3. Generate setup token and store LoginAttempt in cache
+            // 4. Generate setup token and store LoginAttempt in cache
             var setupToken = Guid.NewGuid().ToString("N");
             _cache.StoreLoginAttempt(setupToken, new LoginAttemptCached
             {
