@@ -10,28 +10,11 @@ using DMS.Auth.Application.Interfaces;
 
 namespace DMS.Auth.Infrastructure.ExternalServices;
 
-public partial class KeycloakClient : IKeycloakClient
+public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<KeycloakClient> _logger;
-    private readonly string _keycloakServerUrl;
-    private readonly string _realm;
-    private readonly string _clientId;
-    private readonly string _clientSecret;    
-    private readonly string _redirectUri;
-
-    public KeycloakClient(HttpClient httpClient, IConfiguration configuration, ILogger<KeycloakClient> logger)
+    public KeycloakClient(HttpClient httpClient, IConfiguration configuration, ILogger<KeycloakClient> logger) 
+        : base(httpClient, configuration, logger)
     {
-        _httpClient = httpClient;
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        _keycloakServerUrl = _configuration["Keycloak:BaseUrl"] ?? throw new ArgumentNullException("Keycloak:BaseUrl");
-        _realm = _configuration["Keycloak:Realm"] ?? throw new ArgumentNullException("Keycloak:Realm");
-        _clientId = _configuration["Keycloak:ClientId"] ?? throw new ArgumentNullException("Keycloak:ClientId");
-        _clientSecret = _configuration["Keycloak:ClientSecret"] ?? throw new ArgumentNullException("Keycloak:ClientSecret");
-        _redirectUri = _configuration["Keycloak:RedirectUrl"] ?? "";
     }
 
     // Authenticate Public Users (Frontend Apps) using Password Grant (Return a JWT token).
@@ -39,79 +22,55 @@ public partial class KeycloakClient : IKeycloakClient
     {
         var content = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("grant_type", "password"),
-            new KeyValuePair<string, string>("client_id", _clientId),
-            new KeyValuePair<string, string>("client_secret", _clientSecret),
-            new KeyValuePair<string, string>("username", username),
-            new KeyValuePair<string, string>("password", password),
-            //new KeyValuePair<string, string>("scope", "openid")
-        });
+                new KeyValuePair<string, string>("grant_type", "password"),
+                new KeyValuePair<string, string>("client_id", _clientId),
+                new KeyValuePair<string, string>("client_secret", _clientSecret),
+                new KeyValuePair<string, string>("username", username),
+                new KeyValuePair<string, string>("password", password),
+            });
 
-        var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        var jsonResponse = await response.Content.ReadAsStringAsync();
-
-        return JsonSerializer.Deserialize<TokenDto>(jsonResponse);
-    }
-
-    // Authenticate Backend Services (Microservices, APIs) using Client Credentials Flow (Return a JWT Admin Token).
-    public async Task<TokenDto?> GetAdminAccessTokenAsync()
-    {
-        var content = new FormUrlEncodedContent(new[]
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token")
         {
-            new KeyValuePair<string, string>("grant_type", "client_credentials"),
-            new KeyValuePair<string, string>("client_id", _clientId),
-            new KeyValuePair<string, string>("client_secret", _clientSecret),
-        });
+            Content = content
+        };
 
-        var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        var jsonResponse = await response.Content.ReadAsStringAsync();
-
-        return JsonSerializer.Deserialize<TokenDto>(jsonResponse);
+        return await SendRequestAsync<TokenDto>(request);
     }
 
     public async Task<TokenDto?> RefreshTokenAsync(string refreshToken)
     {
         var content = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("grant_type", "refresh_token"),
-            new KeyValuePair<string, string>("client_id", _clientId),
-            new KeyValuePair<string, string>("client_secret", _clientSecret),
-            new KeyValuePair<string, string>("refresh_token", refreshToken)
-        });
+                new KeyValuePair<string, string>("grant_type", "refresh_token"),
+                new KeyValuePair<string, string>("client_id", _clientId),
+                new KeyValuePair<string, string>("client_secret", _clientSecret),
+                new KeyValuePair<string, string>("refresh_token", refreshToken)
+            });
 
-        var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token", content);
-        if (!response.IsSuccessStatusCode) return null;
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token")
+        {
+            Content = content
+        };
 
-        var responseBody = await response.Content.ReadAsStringAsync();
-
-        return JsonSerializer.Deserialize<TokenDto>(responseBody);
+        return await SendRequestAsync<TokenDto>(request);
     }
 
     public async Task<bool> LogoutAsync(string refreshToken)
     {
         var content = new FormUrlEncodedContent(new[]
         {
-            new KeyValuePair<string, string>("client_id", _clientId),
-            new KeyValuePair<string, string>("client_secret", _clientSecret),
-            new KeyValuePair<string, string>("refresh_token", refreshToken)
-        });
+                new KeyValuePair<string, string>("client_id", _clientId),
+                new KeyValuePair<string, string>("client_secret", _clientSecret),
+                new KeyValuePair<string, string>("refresh_token", refreshToken)
+            });
 
-        var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/logout", content);
-
-        if (!response.IsSuccessStatusCode)
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/logout")
         {
-            _logger.LogError("Failed to log out user: {Response}", await response.Content.ReadAsStringAsync());
-            return false;
-        }
+            Content = content
+        };
 
-        return true;
-    }        
+        return await SendRequestAsync(request);
+    }
 
     private async Task<bool> SendVerifyEmail(string? userId, string? adminToken = null)
     {
@@ -128,7 +87,7 @@ public partial class KeycloakClient : IKeycloakClient
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("Failed to send email MFA in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
+            //_logger.LogError("Failed to send email MFA in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
             return false;
         }
 
@@ -159,7 +118,7 @@ public partial class KeycloakClient : IKeycloakClient
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("Failed to send email MFA in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
+            //_logger.LogError("Failed to send email MFA in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
             return false;
         }
 

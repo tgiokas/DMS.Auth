@@ -6,7 +6,7 @@ public class LogMiddleware
     private readonly RequestDelegate _next;
 
     const string LogMessageTemplate =
-        "HTTP {Direction} {CorrelationId} {RequestMethod} {RequestPath} {RequestPayload} responded {HttpStatusCode} {ResponsePayload} in {Elapsed:0.0000} ms";
+        "HTTP {Direction} {RequestMethod} {RequestPath} {RequestPayload} responded {HttpStatusCode} {ResponsePayload} in {Elapsed:0.0000} ms";
 
     public LogMiddleware(RequestDelegate next)
     {
@@ -16,10 +16,7 @@ public class LogMiddleware
     public async Task Invoke(HttpContext httpContext, ILogger<LogMiddleware> logger)
     {
         string requestBody = await GetRequestBody(httpContext.Request);
-
-        // Get correlationId from httpContext.Items 
-        var correlationId = Guid.NewGuid();
-
+        
         // Copy a pointer to the original response body stream
         Stream originalBodyStream = httpContext.Response.Body;
 
@@ -36,8 +33,8 @@ public class LogMiddleware
         LogLevel loglevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
 
         // Log using Serilog
-        logger.Log(loglevel, LogMessageTemplate, "Incoming", correlationId, httpContext.Request.Method
-            , httpContext.Request.Path, requestBody, statusCode, responseBody, (long)sw.Elapsed.TotalMilliseconds);
+        logger.Log(loglevel, LogMessageTemplate, "Incoming", httpContext.Request.Method, 
+            httpContext.Request.Path, requestBody, statusCode, responseBody, (long)sw.Elapsed.TotalMilliseconds);
 
         httpContext.Response.Body = originalBodyStream;
 

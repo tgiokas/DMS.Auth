@@ -26,6 +26,8 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+//builder.Services.AddLogging();
+
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Add memory cache
@@ -52,7 +54,7 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
     client.BaseAddress = new Uri(baseUrl);
 });
 
-//builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
+builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
 //builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 
 // RabbitMQ Connection

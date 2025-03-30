@@ -5,7 +5,6 @@ namespace DMS.Auth.Application.Interfaces;
 public interface IKeycloakClient
 {   
     Task<TokenDto?> GetUserAccessTokenAsync(string username, string password);
-    Task<TokenDto?> GetAdminAccessTokenAsync();
     Task<TokenDto?> RefreshTokenAsync(string refreshToken);    
     Task<bool> LogoutAsync(string refreshToken);
     Task<string> GsisLoginUrl();
@@ -18,7 +17,7 @@ public interface IKeycloakClient
     Task<bool> UpdateUserAsync(UserUpdateDto request);
     Task<bool> DeleteUserAsync(string username);
 
-    Task<List<KeycloakRole>> GetUserRolesAsync(string username);
+    Task<List<KeycloakRole>?> GetUserRolesAsync(string username);
     Task<bool> CreateRoleAsync(string roleName, string roleDescr, string realm);
     Task<bool> AssignRoleAsync(string username, string roleId);
 }

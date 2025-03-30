@@ -37,12 +37,11 @@ This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSe
 
 ---
 
-## 🔐 Security Notes
+## 📜 Logging - Serilog
 
-- ✅ Passwords are stored **temporarily** in-memory (not persisted)
-- ✅ Token is only issued **after MFA verification passes**
-- ✅ All secrets and attempts auto-expire in 5 minutes
-- ❌ No sensitive data is logged or serialized
+This microservice uses **Serilog** for structured logging.
+Serilog is configured to log to various sinks, including console and file. 
+The configuration can be found in the `appsettings.json` file.
 
 ---
 
@@ -53,11 +52,12 @@ This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSe
 - PostgreSQL
 - Otp.NET
 - IMemoryCache
+- Serilog for logging
 - Clean Architecture (SOLID)
 
 ---
 
-## 🧭 MFA-First Login Flow with TOTP
+## MFA-First Login Flow with TOTP
 
 This microservice handles **authentication and MFA (TOTP)** using:
 

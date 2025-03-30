@@ -14,7 +14,7 @@ public class AuthenticationService : IAuthenticationService
     private readonly IKeycloakClient _keycloakClient;    
     private readonly ITotpCacheService _cache;
     private readonly ITotpRepository _secretRepo;
-    private readonly ILogger<AuthenticationService> _logger;
+    //private readonly ILogger<AuthenticationService> _logger;
 
     public AuthenticationService(IKeycloakClient keycloakClient, 
         ITotpCacheService cache, 
@@ -24,7 +24,7 @@ public class AuthenticationService : IAuthenticationService
         _keycloakClient = keycloakClient;
         _cache = cache;        
         _secretRepo = secretRepo;
-        _logger = logger;
+        //_logger = logger;
     }
 
     /// Authenticates a user and retrieves a JWT token.
@@ -32,9 +32,9 @@ public class AuthenticationService : IAuthenticationService
     {
         // 1. Validate credentials via Keycloak token endpoint
         var tokenResponse = await _keycloakClient.GetUserAccessTokenAsync(username, password);
-        if (tokenResponse == null)
+        if (tokenResponse == null || tokenResponse.Access_token == null)
         {
-            _logger.LogError("Authentication failed for user: {Username}", username);
+            //_logger.LogError("Authentication failed for user: {Username}", username);
             return LoginResult.Fail("Authentication failed for user");
         }       
 
@@ -153,7 +153,7 @@ public class AuthenticationService : IAuthenticationService
         // 4. Validate credentials via Keycloak & return Token
         var tokenResponse = await _keycloakClient.GetUserAccessTokenAsync(loginAttempt.Username, loginAttempt.Password);
 
-        if (tokenResponse == null)
+        if (tokenResponse == null || tokenResponse.Access_token == null)
             return LoginResult.Fail("Failed to retrieve token from Keycloak");
 
         _cache.RemoveLoginAttempt(setupToken);
@@ -167,11 +167,7 @@ public class AuthenticationService : IAuthenticationService
     /// Refreshes a user's access token.
     public async Task<TokenDto?> RefreshTokenAsync(string refreshToken)
     {
-        var tokenResponse = await _keycloakClient.RefreshTokenAsync(refreshToken);
-        if (tokenResponse == null)
-        {
-            _logger.LogError("Token refresh failed.");
-        }
+        var tokenResponse = await _keycloakClient.RefreshTokenAsync(refreshToken);        
         return tokenResponse;
     }
 
@@ -183,21 +179,13 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<string?> LoginWithGsis()
     {
-        var tokenResponse = await _keycloakClient.GsisLoginUrl();
-        if (tokenResponse == null)
-        {
-            _logger.LogError("Login failed");
-        }
+        var tokenResponse = await _keycloakClient.GsisLoginUrl();        
         return tokenResponse;
     }
 
     public async Task<TokenDto?> GsisCallback(string code)
     {
-        var tokenResponse = await _keycloakClient.GsisCallback(code);
-        if (tokenResponse == null)
-        {
-            _logger.LogError("Authentication failed for user: {Username}", code);
-        }
+        var tokenResponse = await _keycloakClient.GsisCallback(code);       
         return tokenResponse;
     }
 
