@@ -41,46 +41,11 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddControllers();
 
-//builder.Services.AddSwaggerGen();
-
 var app = builder.Build();
-
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-
-//// Protected endpoints with role-based access control
-//app.MapGet("/api/admin", [Authorize(Policy = "AdminOnly")] () => "Admin access granted.");
-
-//app.MapGet("/api/user", [Authorize(Policy = "UserOnly")] () => "User access granted.");
-
-//app.MapGet("/api/shared", [Authorize(Policy = "AdminOrUser")] () => "Admin or User access granted.");
-
-//app.MapGet("/api/protected-endpoint", [Authorize] () => "This is a protected resource.");
-
-//app.MapGet("/api/service-to-service", [Authorize] () => "Service-to-Service Authentication successful.");
-
-//app.MapGet("/api/third-party", [Authorize] () => "Third-party API authentication successful.");
-
-//app.MapGet("/api/delegated", [Authorize] () => "Delegated OAuth 2.0 access successful.");
-
-//app.MapGet("/api/api-key-protected", (context) =>
-//{
-//    var apiKey = context.Request.Headers["x-api-key"];
-//    if (apiKey == "YOUR_GENERATED_API_KEY")
-//    {
-//        return context.Response.WriteAsync("API Key authentication successful.");
-//    }
-//    context.Response.StatusCode = 403;
-//    return context.Response.WriteAsync("Invalid API Key.");
-//});
 
 app.Run();
 
