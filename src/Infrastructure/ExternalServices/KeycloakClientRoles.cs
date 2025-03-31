@@ -1,5 +1,4 @@
-﻿using System.Net.Http.Headers;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 
@@ -8,8 +7,8 @@ using DMS.Auth.Application.Interfaces;
 
 namespace DMS.Auth.Infrastructure.ExternalServices;
 
-public partial class KeycloakClient : IKeycloakClient
-{     
+public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
+{
     public async Task<List<KeycloakRole>?> GetUserRolesAsync(string username)
     {
         var userId = await GetUserIdByUsernameAsync(username);
@@ -19,14 +18,10 @@ public partial class KeycloakClient : IKeycloakClient
             return null;
         }
 
-        var adminToken = await GetAdminAccessTokenAsync();       
-
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}/role-mappings/realm";
+        var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
 
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
-
-        var response = await _httpClient.GetAsync(requestUrl);
-
+        var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("Failed to fetch roles for user {Username} in Keycloak: {Response}", username, await response.Content.ReadAsStringAsync());
@@ -34,7 +29,6 @@ public partial class KeycloakClient : IKeycloakClient
         }
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
-
         var roles = JsonSerializer.Deserialize<List<KeycloakRole>>(jsonResponse);
 
         if (roles == null)
@@ -57,14 +51,11 @@ public partial class KeycloakClient : IKeycloakClient
             ContainerId = realm
         };
 
-        var adminToken = await GetAdminAccessTokenAsync();
+        var jsonPayload = JsonSerializer.Serialize(newRole);
+        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/roles";
+        var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, requestUrl, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 
-        var content = new StringContent(JsonSerializer.Serialize(newRole), Encoding.UTF8, "application/json");
-
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
-
-        var response = await _httpClient.PostAsync($"{_keycloakServerUrl}/admin/realms/{_realm}/roles", content);
-
+        var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("Failed to create role in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
@@ -72,8 +63,8 @@ public partial class KeycloakClient : IKeycloakClient
         }
 
         return true;
-    }   
- 
+    }
+
     public async Task<bool> AssignRoleAsync(string username, string roleId)
     {
         var userId = await GetUserIdByUsernameAsync(username);
@@ -81,23 +72,18 @@ public partial class KeycloakClient : IKeycloakClient
         {
             _logger.LogError("User {Username} not found in Keycloak", username);
             return false;
-        }
-
-        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}/role-mappings/realm";
+        }        
 
         var roleMapping = new List<object>
         {
             new { id = roleId, name = "custom_role" }
         };
 
-        var adminToken = await GetAdminAccessTokenAsync();
+        var jsonPayload = JsonSerializer.Serialize(roleMapping);
+        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}/role-mappings/realm";
+        var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, requestUrl, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 
-        var content = new StringContent(JsonSerializer.Serialize(roleMapping), Encoding.UTF8, "application/json");
-
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken?.Access_token);
-
-        var response = await _httpClient.PostAsync(requestUrl, content);
-
+        var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("Failed to assign role in Keycloak: {Response}", await response.Content.ReadAsStringAsync());
@@ -105,5 +91,6 @@ public partial class KeycloakClient : IKeycloakClient
         }
 
         return true;
-    }     
+    }
 }
+
