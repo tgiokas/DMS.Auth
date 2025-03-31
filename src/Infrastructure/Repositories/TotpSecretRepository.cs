@@ -29,13 +29,8 @@ public class TotpSecretRepository : ITotpRepository
                     UserId = userId,
                     Base32Secret = base32Secret
                 });
+                await _dbContext.SaveChangesAsync();
             }
-            else
-            {
-                existing.Base32Secret = base32Secret;
-            }
-
-            await _dbContext.SaveChangesAsync();
         }
         catch (Exception)
         {

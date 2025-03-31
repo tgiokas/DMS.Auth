@@ -26,8 +26,7 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-//builder.Services.AddLogging();
-
+// Add AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Add memory cache
@@ -36,7 +35,7 @@ builder.Services.AddMemoryCache();
 //builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 builder.Services.AddScoped<ITotpCacheService, TotpCacheService>();
 
-// Add services to the container.
+// Add Application services
 builder.Services.AddApplicationServices();
 
 // Register Database Context
@@ -69,43 +68,12 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
 //    return (IConnection)factory.CreateConnectionAsync();
 //});
 
-
 // Audit Event Publisher
 //builder.Services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();
 
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
-
-//builder.Services.AddSwaggerGen(x =>
-//{
-//    x.SwaggerDoc("v1", new OpenApiInfo { Title = "Api", Version = "v1" });
-//    x.AddSecurityDefinition("Bearer ", new OpenApiSecurityScheme
-//    {
-//        Description = "JWT Authorization header using the Bearer scheme.",
-//        Name = "Authorization",
-//        In = ParameterLocation.Header,
-//        Type = SecuritySchemeType.ApiKey,
-//        Scheme = "Bearer "
-//    });
-//    x.AddSecurityRequirement(new OpenApiSecurityRequirement
-//                {
-//                    {
-//                        new OpenApiSecurityScheme
-//                        {
-//                            Reference = new OpenApiReference
-//                            {
-//                                Type = ReferenceType.SecurityScheme,
-//                                Id = "Bearer "
-//                            },
-//                            Scheme = "oauth2",
-//                            Name = "Bearer ",
-//                            In = ParameterLocation.Header
-//                        },
-//                        new List<string>()
-//                    }
-//                });
-//});
 
 // Configure Authentication & Keycloak JWT Bearer
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -139,7 +107,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
     });
 
-//Ensure Role-Based Access Control (RBAC) uses the correct claim mapping
+//Role-Based Access Control (RBAC) policies with role claim mapping
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("AdminOnly", policy => policy.RequireRole("admin"))
     .AddPolicy("UserOnly", policy => policy.RequireRole("user"))
@@ -161,20 +129,6 @@ app.UseMiddleware<LogMiddleware>(); // Enable Serilog logging for API requests
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-//app.UseStaticFiles(); // Enable serving static files
-
-//app.UseRouting();
-
-//app.UseEndpoints(endpoints =>
-//{
-//    endpoints.MapGet("/", async context =>
-//    {
-//        context.Response.Redirect("htmlpage.html");
-//    });
-//    endpoints.MapControllers();
-//});
-
 
 app.Run();
 
@@ -233,5 +187,3 @@ void MapKeycloakRolesToRoleClaims(TokenValidatedContext context)
 //        claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, clientRole.Value));
 //    }
 //}
-
-
