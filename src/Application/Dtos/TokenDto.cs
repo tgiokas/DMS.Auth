@@ -16,4 +16,3 @@ public class TokenDto
     [JsonPropertyName("expires_in")]
     public int? Expires_in { get; set; }
 }
-

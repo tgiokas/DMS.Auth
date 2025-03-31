@@ -4,7 +4,7 @@ namespace DMS.Auth.Application.Interfaces;
 
 public interface ITotpCacheService
 {
-    // Temporary TOTP Secrets
+    // Cached TOTP Secrets
     void StoreSecret(string token, TotpSecretCached entry, TimeSpan? ttl = null);
     TotpSecretCached? GetSecret(string token);
     void RemoveSecret(string token);
