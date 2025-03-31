@@ -27,7 +27,7 @@ public class AuthenticationService : IAuthenticationService
         _logger = logger;
     }
 
-    /// Authenticates / Login a user and retrieves a JWT token.
+    /// Authenticate / Login a user and retrieves a JWT token.
     public async Task<LoginResult?> LoginUserAsync(string username, string password)
     {
         // 1. Validate credentials via Keycloak token endpoint
@@ -72,7 +72,7 @@ public class AuthenticationService : IAuthenticationService
         }
     }        
 
-    /// Generates TOTP QR Code and Secret 
+    /// Generate TOTP QR Code and Secret 
     public TotpSetupDto GenerateTotpCode(string username, string issuer = "DMS Auth")
     {
         // 1. Generate 20-byte secret
