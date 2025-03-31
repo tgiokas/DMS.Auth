@@ -2,7 +2,7 @@
 
 using DMS.Auth.Domain.Entities;
 using DMS.Auth.Domain.Interfaces;
-using DMS.Auth.Infrastructure.Persistence;
+using DMS.Auth.Infrastructure.Database;
 
 namespace DMS.Auth.Infrastructure.Repositories;
 

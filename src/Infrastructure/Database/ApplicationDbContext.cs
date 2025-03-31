@@ -3,7 +3,7 @@
 using DMS.Auth.Domain.Entities;
 using DMS.Auth.Application.Interfaces;
 
-namespace DMS.Auth.Infrastructure.Persistence;
+namespace DMS.Auth.Infrastructure.Database;
 
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {

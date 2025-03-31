@@ -11,7 +11,7 @@ using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Mappings;
 using DMS.Auth.Infrastructure.DependencyInjection;
 using DMS.Auth.Infrastructure.ExternalServices;
-using DMS.Auth.Infrastructure.Persistence;
+using DMS.Auth.Infrastructure.Database;
 using Serilog;
 using DMS.Auth.WebApi.Middlewares;
 
