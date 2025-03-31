@@ -34,8 +34,7 @@ public class AuthenticationService : IAuthenticationService
         // 1. Validate credentials via Keycloak token endpoint
         var tokenResponse = await _keycloakClient.GetUserAccessTokenAsync(username, password);
         if (tokenResponse == null || tokenResponse.Access_token == null)
-        {
-            //_logger.LogError("Authentication failed for user: {Username}", username);
+        {            
             return LoginResult.Fail("Authentication failed for user");
         }       
 
@@ -180,14 +179,14 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<string?> LoginWithGsis()
     {
-        var tokenResponse = await _keycloakClient.GsisLoginUrl();        
-        return tokenResponse;
+        var response = await _keycloakClient.GsisLoginUrl();        
+        return response;
     }
 
     public async Task<TokenDto?> GsisCallback(string code)
     {
-        var tokenResponse = await _keycloakClient.GsisCallback(code);       
-        return tokenResponse;
+        var response = await _keycloakClient.GsisCallback(code);       
+        return response;
     }
 
     private static bool ValidateCode(string base32Secret, string code)
