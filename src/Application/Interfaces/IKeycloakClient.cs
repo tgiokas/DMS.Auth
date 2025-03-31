@@ -10,7 +10,7 @@ public interface IKeycloakClient
     Task<string> GsisLoginUrl();
     Task<TokenDto?> GsisCallback(string code);
 
-    Task<List<KeycloakUser>> GetUsersAsync();
+    Task<List<KeycloakUser>?> GetUsersAsync();
     Task<string?> GetUserIdByUsernameAsync(string username);
     Task<KeycloakCredential?> GetUserCredentialsAsync(string userId);
     Task<bool> CreateUserAsync(string username, string email, string password);

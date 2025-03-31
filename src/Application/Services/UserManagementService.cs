@@ -14,8 +14,7 @@ public class UserManagementService : IUserManagementService
     private readonly IKeycloakClient _keycloakClient;
     private readonly IUserRepository _userRepository;
     private readonly IConfiguration _configuration;
-    private readonly IMapper _mapper;
-    //private readonly ILogger<UserManagementService> _logger;
+    private readonly IMapper _mapper;   
 
     public UserManagementService(IKeycloakClient keycloakClient, 
         IUserRepository userRepository, 
@@ -28,7 +27,7 @@ public class UserManagementService : IUserManagementService
         _mapper = mapper;
     }
 
-    public async Task<List<KeycloakUser>> GetUsersAsync()
+    public async Task<List<KeycloakUser>?> GetUsersAsync()
     {
         return await _keycloakClient.GetUsersAsync();
     }
@@ -67,7 +66,7 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.DeleteUserAsync(username);
     }
 
-    public async Task<List<KeycloakRole>> GetUserRolesAsync(string username)
+    public async Task<List<KeycloakRole>?> GetUserRolesAsync(string username)
     {
         return await _keycloakClient.GetUserRolesAsync(username);
     }
@@ -79,7 +78,6 @@ public class UserManagementService : IUserManagementService
 
     public Task<bool> EnableMfaAsync(string username)
     {
-        //return await _keycloakClient.EnableMfaAsync(username);
         return Task.FromResult(true);
     }
 }

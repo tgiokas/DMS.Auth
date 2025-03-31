@@ -10,13 +10,13 @@ namespace DMS.Auth.Infrastructure.ExternalServices;
 
 public partial class KeycloakClient : IKeycloakClient
 {     
-    public async Task<List<KeycloakRole>> GetUserRolesAsync(string username)
+    public async Task<List<KeycloakRole>?> GetUserRolesAsync(string username)
     {
         var userId = await GetUserIdByUsernameAsync(username);
         if (string.IsNullOrEmpty(userId))
         {
             _logger.LogError("User {Username} not found in Keycloak", username);
-            return new List<KeycloakRole>();
+            return null;
         }
 
         var adminToken = await GetAdminAccessTokenAsync();       
@@ -30,7 +30,7 @@ public partial class KeycloakClient : IKeycloakClient
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("Failed to fetch roles for user {Username} in Keycloak: {Response}", username, await response.Content.ReadAsStringAsync());
-            return new List<KeycloakRole>();
+            return null;
         }
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
@@ -40,7 +40,7 @@ public partial class KeycloakClient : IKeycloakClient
         if (roles == null)
         {
             _logger.LogWarning("Empty response body while fetching users from Keycloak.");
-            return new List<KeycloakRole>();
+            return null;
         }
 
         return roles;

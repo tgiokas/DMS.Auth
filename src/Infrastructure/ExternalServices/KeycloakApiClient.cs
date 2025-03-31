@@ -14,6 +14,7 @@ namespace DMS.Auth.Infrastructure.ExternalServices
         protected readonly HttpClient _httpClient;
         protected readonly IConfiguration _configuration;
         protected readonly ILogger<KeycloakClient> _logger;
+
         protected readonly string _keycloakServerUrl;
         protected readonly string _realm;
         protected readonly string _clientId;

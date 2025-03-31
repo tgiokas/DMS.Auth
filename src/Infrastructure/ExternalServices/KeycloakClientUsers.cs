@@ -9,16 +9,16 @@ namespace DMS.Auth.Infrastructure.ExternalServices;
 
 public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
 {
-    public async Task<List<KeycloakUser>> GetUsersAsync()
+    public async Task<List<KeycloakUser>?> GetUsersAsync()
     {
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
         var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
-            return new List<KeycloakUser>();
+            return null;
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse) ?? new List<KeycloakUser>();
+        return JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse);
     }
 
     public async Task<string?> GetUserIdByUsernameAsync(string username)

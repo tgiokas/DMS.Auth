@@ -18,8 +18,9 @@ public class AuthenticationService : IAuthenticationService
 
     public AuthenticationService(IKeycloakClient keycloakClient, 
         ITotpCacheService cache, 
-        ITotpRepository secretRepo,
-        ILogger<AuthenticationService> logger)
+        ITotpRepository secretRepo
+        //ILogger<AuthenticationService> logger
+        )
     {
         _keycloakClient = keycloakClient;
         _cache = cache;        
