@@ -13,6 +13,7 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
     {
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
+        
         var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
             return null;
@@ -25,6 +26,7 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
     {
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users?username={username}";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
+        
         var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
             return null;
@@ -38,6 +40,7 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
     {
         var requestUrl = $"{_keycloakServerUrl}admin/realms/{_realm}/users/{userId}/credentials";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
+        
         var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
             return null;
@@ -68,27 +71,27 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<bool> UpdateUserAsync(UserUpdateDto request)
+    public async Task<bool> UpdateUserAsync(UserUpdateDto userUpdateDto)
     {
-        var userId = await GetUserIdByUsernameAsync(request.Username);
+        var userId = await GetUserIdByUsernameAsync(userUpdateDto.Username);
         if (string.IsNullOrEmpty(userId))
         {
-            _logger.LogError("User {Username} not found in Keycloak", request.Username);
+            _logger.LogError("User {Username} not found in Keycloak", userUpdateDto.Username);
             return false;
         }
 
         var updateData = new
         {
-            username = request.NewUsername ?? request.Username,
-            email = request.NewEmail ?? request.Email,
-            enabled = request.IsEnabled
+            username = userUpdateDto.NewUsername ?? userUpdateDto.Username,
+            email = userUpdateDto.NewEmail ?? userUpdateDto.Email,
+            enabled = userUpdateDto.IsEnabled
         };
 
         var jsonPayload = JsonSerializer.Serialize(updateData);
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users/{userId}";
-        var httpRequest = await CreateAuthenticatedRequestAsync(HttpMethod.Put, requestUrl, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
+        var request = await CreateAuthenticatedRequestAsync(HttpMethod.Put, requestUrl, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 
-        var response = await SendRequestAsync(httpRequest);
+        var response = await SendRequestAsync(request);
         return response.IsSuccessStatusCode;
     }
 
