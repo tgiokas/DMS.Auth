@@ -54,7 +54,12 @@ namespace DMS.Auth.Infrastructure.ExternalServices
                 Content = content
             };
 
-            return await SendRequestAsync<TokenDto>(request);
+            var response = await SendRequestAsync(request);
+            if (!response.IsSuccessStatusCode)
+                return null;
+
+            var jsonResponse = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<TokenDto>(jsonResponse);
         }
 
         protected async Task<HttpRequestMessage> CreateAuthenticatedRequestAsync(HttpMethod method, string requestUrl, HttpContent? content = null)
@@ -68,35 +73,7 @@ namespace DMS.Auth.Infrastructure.ExternalServices
             return request;
         }
 
-        protected async Task<T?> SendRequestAsync<T>(HttpRequestMessage request)
-        {
-            string requestBody = request.Content != null ? await request.Content.ReadAsStringAsync() : string.Empty;
-            var sw = Stopwatch.StartNew();
-
-            HttpResponseMessage response;
-            try
-            {
-                response = await _httpClient.SendAsync(request);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ErrorMessageTemplate, "Outgoing", request.Method,
-                    request.RequestUri, requestBody, HttpStatusCode.ServiceUnavailable, "");
-                throw;
-            }
-
-            sw.Stop();
-            string responseBody = await response.Content.ReadAsStringAsync();
-            int statusCode = (int)response.StatusCode;
-            LogLevel logLevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
-
-            _logger.Log(logLevel, LogMessageTemplate, "Outgoing", request.Method, 
-                    request.RequestUri, requestBody, statusCode, responseBody, (long)sw.ElapsedMilliseconds);
-
-            return JsonSerializer.Deserialize<T>(responseBody);
-        }
-
-        protected async Task<bool> SendRequestAsync(HttpRequestMessage request)
+        protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage request)
         {
             string requestBody = request.Content != null ? await request.Content.ReadAsStringAsync() : string.Empty;
             var sw = Stopwatch.StartNew();
@@ -119,9 +96,9 @@ namespace DMS.Auth.Infrastructure.ExternalServices
             LogLevel logLevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
 
             _logger.Log(logLevel, LogMessageTemplate, "Outgoing", request.Method,
-                    request.RequestUri, requestBody, statusCode, responseBody, (long)sw.ElapsedMilliseconds);
+                request.RequestUri, requestBody, statusCode, responseBody, (long)sw.ElapsedMilliseconds);
 
-            return response.IsSuccessStatusCode;
+            return response;
         }
     }
 }

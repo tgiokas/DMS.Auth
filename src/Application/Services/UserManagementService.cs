@@ -36,7 +36,8 @@ public class UserManagementService : IUserManagementService
     public async Task<KeycloakCredential?> GetUserProfile(string username)
     {
         var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
-        if (userId != null) {
+        if (userId != null) 
+        {
             return await _keycloakClient.GetUserCredentialsAsync(userId);            
         }
         return null;
