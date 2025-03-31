@@ -131,7 +131,7 @@ public class AuthenticationService : IAuthenticationService
         return true;
     }
 
-    /// Verify Login with TOTP Code
+    /// Validate Login with TOTP Code
     public async Task<LoginResult> VerifyLoginTotpAsync(string setupToken, string code)
     {
         //var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
