@@ -14,21 +14,20 @@ public class AuthenticationService : IAuthenticationService
     private readonly IKeycloakClient _keycloakClient;    
     private readonly ITotpCacheService _cache;
     private readonly ITotpRepository _secretRepo;
-    //private readonly ILogger<AuthenticationService> _logger;
+    private readonly ILogger<AuthenticationService> _logger;
 
-    public AuthenticationService(IKeycloakClient keycloakClient, 
-        ITotpCacheService cache, 
-        ITotpRepository secretRepo
-        //ILogger<AuthenticationService> logger
-        )
+    public AuthenticationService(IKeycloakClient keycloakClient,
+        ITotpCacheService cache,
+        ITotpRepository secretRepo,
+        ILogger<AuthenticationService> logger)
     {
         _keycloakClient = keycloakClient;
-        _cache = cache;        
+        _cache = cache;
         _secretRepo = secretRepo;
-        //_logger = logger;
+        _logger = logger;
     }
 
-    /// Authenticates a user and retrieves a JWT token.
+    /// Authenticates / Login a user and retrieves a JWT token.
     public async Task<LoginResult?> LoginUserAsync(string username, string password)
     {
         // 1. Validate credentials via Keycloak token endpoint
@@ -73,7 +72,7 @@ public class AuthenticationService : IAuthenticationService
         }
     }        
 
-    /// Generates TOTP QR Code and Secret for user enrollment
+    /// Generates TOTP QR Code and Secret 
     public TotpSetupDto GenerateTotpCode(string username, string issuer = "DMS Auth")
     {
         // 1. Generate 20-byte secret
@@ -108,6 +107,7 @@ public class AuthenticationService : IAuthenticationService
         };
     }
 
+    /// Verify TOTP QR Code and save Secret 
     public async Task<bool> RegisterTotpAsync(string username, string code, string setupToken)
     {
         // 1. Load the TOTP secret from cache
@@ -131,6 +131,7 @@ public class AuthenticationService : IAuthenticationService
         return true;
     }
 
+    /// Verify Login with TOTP Code
     public async Task<LoginResult> VerifyLoginTotpAsync(string setupToken, string code)
     {
         //var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
