@@ -164,14 +164,12 @@ public class AuthenticationService : IAuthenticationService
         });        
     }
 
-    /// Refreshes a user's access token.
     public async Task<TokenDto?> RefreshTokenAsync(string refreshToken)
     {
         var tokenResponse = await _keycloakClient.RefreshTokenAsync(refreshToken);        
         return tokenResponse;
     }
 
-    /// Logs out a user by invalidating their refresh token.
     public async Task<bool> LogoutAsync(string refreshToken)
     {
         return await _keycloakClient.LogoutAsync(refreshToken);
