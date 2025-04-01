@@ -4,8 +4,6 @@ using Microsoft.Extensions.Logging;
 
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Domain.Entities;
-using System.Collections.ObjectModel;
 
 namespace DMS.Auth.Infrastructure.ExternalServices;
 
