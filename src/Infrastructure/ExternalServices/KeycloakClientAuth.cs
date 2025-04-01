@@ -83,7 +83,7 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
         return response.IsSuccessStatusCode;
     }
 
-    private async Task<bool> SendVerifyEmail(string? userId, string? adminToken = null)
+    private async Task<bool> SendVerificationEmail(string? userId, string? adminToken = null)
     {
         if (adminToken == null)
         {

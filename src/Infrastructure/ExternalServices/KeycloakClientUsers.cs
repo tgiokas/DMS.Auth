@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Domain.Entities;
+using System.Collections.ObjectModel;
 
 namespace DMS.Auth.Infrastructure.ExternalServices;
 
@@ -50,7 +51,8 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
             UserName = username,
             Email = email,
             Enabled = true,
-            EmailVerified = true,
+            EmailVerified = false,
+            RequiredActions = new List<string>{ "VERIFY_EMAIL" },
             Credentials = new[]
             {
                 new KeycloakCredential { Type = "password", Value = password, Temporary = false }
@@ -62,7 +64,31 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, requestUrl, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 
         var response = await SendRequestAsync(request);
-        return response.IsSuccessStatusCode;
+        //return response.IsSuccessStatusCode;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to create user in Keycloak: {Response}", error);
+            return false;
+        }
+
+        if ((bool)!newUser.EmailVerified)
+        {
+            // Keycloak returns 201 Created, with a 'Location' header of the form:
+            // http://keycloak-host/admin/realms/<realm>/users/<userId>
+            var locationHeader = response.Headers.Location;
+            if (locationHeader != null)
+            {
+                // Extract the ID from the final segment:
+                var locationSegments = locationHeader.AbsolutePath.Split('/');
+                var createdUserId = locationSegments.LastOrDefault();
+
+                await SendVerificationEmail(createdUserId);
+            }
+        }
+        
+        return true;
     }
 
     public async Task<bool> UpdateUserAsync(UserUpdateDto userUpdateDto)
