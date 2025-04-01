@@ -40,7 +40,7 @@ This service uses **PostgreSQL** to persist data, such as: UserProfiles & TotpSe
 ## 📜 Logging - Serilog
 
 This microservice uses **Serilog** for structured logging.
-Serilog is configured to log to various sinks, including console and file. 
+Serilog is configured to log to various sinks, including console, file, Seq, Elastic. 
 The configuration can be found in the `appsettings.json` file.
 
 ---
