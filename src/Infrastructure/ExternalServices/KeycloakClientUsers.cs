@@ -46,13 +46,15 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
 
     public async Task<bool> CreateUserAsync(string username, string email, string password)
     {
+
+        bool emailVerified = bool.Parse(_configuration["EmailVerified"] ?? "true");
+
         var newUser = new KeycloakUser
         {
             UserName = username,
             Email = email,
             Enabled = true,
-            EmailVerified = false,
-            RequiredActions = new List<string>{ "VERIFY_EMAIL" },
+            EmailVerified = emailVerified,  
             Credentials = new[]
             {
                 new KeycloakCredential { Type = "password", Value = password, Temporary = false }
@@ -73,7 +75,7 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
             return false;
         }
 
-        if ((bool)!newUser.EmailVerified)
+        if (!emailVerified)
         {
             // Keycloak returns 201 Created, with a 'Location' header of the form:
             // http://keycloak-host/admin/realms/<realm>/users/<userId>
