@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using DMS.Auth.Application.Dtos;
 using DMS.Auth.Application.Interfaces;
+using DMS.Auth.Domain.Entities;
 
 namespace DMS.Auth.Infrastructure.ExternalServices;
 
@@ -23,8 +24,14 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
     }
 
     public async Task<string?> GetUserIdByUsernameAsync(string username)
+    {       
+        var user = await GetUserProfileAsync(username);
+        return user?.Id;
+    }
+
+    public async Task<KeycloakUser?> GetUserProfileAsync(string username)
     {
-        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users?username={username}";
+        var requestUrl = $"{_keycloakServerUrl}admin/realms/{_realm}/users?username={username}";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
         
         var response = await SendRequestAsync(request);
@@ -33,20 +40,7 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
         var users = JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse);
-        return users?.FirstOrDefault()?.Id;
-    }
-
-    public async Task<KeycloakCredential?> GetUserCredentialsAsync(string userId)
-    {
-        var requestUrl = $"{_keycloakServerUrl}admin/realms/{_realm}/users/{userId}/credentials";
-        var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
-        
-        var response = await SendRequestAsync(request);
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        var jsonResponse = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<KeycloakCredential>(jsonResponse);
+        return users?.FirstOrDefault();
     }
 
     public async Task<bool> CreateUserAsync(string username, string email, string password)

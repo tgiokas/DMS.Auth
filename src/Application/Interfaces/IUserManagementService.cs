@@ -5,7 +5,7 @@ namespace DMS.Auth.Application.Interfaces;
 public interface IUserManagementService
 {
     Task<List<KeycloakUser>?> GetUsersAsync();
-    Task<KeycloakCredential?> GetUserProfile(string username);
+    Task<KeycloakUser?> GetUserProfile(string username);
     Task<bool> CreateUserAsync(UserCreateDto request);
     Task<bool> UpdateUserAsync(UserUpdateDto request);
     Task<bool> DeleteUserAsync(string username);

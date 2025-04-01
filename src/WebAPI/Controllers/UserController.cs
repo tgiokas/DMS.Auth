@@ -36,7 +36,7 @@ public class UserController : ControllerBase
         var response = await _userManagementService.GetUserProfile(username);
         if (response == null)
         {
-            return BadRequest(new { message = "Failed to get Users" });
+            return BadRequest(new { message = "Failed to get User" });
         }
         return Ok(response);
     }

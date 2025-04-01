@@ -32,14 +32,9 @@ public class UserManagementService : IUserManagementService
         return await _keycloakClient.GetUsersAsync();
     }
 
-    public async Task<KeycloakCredential?> GetUserProfile(string username)
+    public async Task<KeycloakUser?> GetUserProfile(string username)
     {
-        var userId = await _keycloakClient.GetUserIdByUsernameAsync(username);
-        if (userId != null) 
-        {
-            return await _keycloakClient.GetUserCredentialsAsync(userId);            
-        }
-        return null;
+        return await _keycloakClient.GetUserProfileAsync(username);       
     }
 
     public async Task<bool> CreateUserAsync(UserCreateDto request)
