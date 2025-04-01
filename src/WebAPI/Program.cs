@@ -41,7 +41,6 @@ builder.Services.AddApplicationServices();
 // Register Database Context
 builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
 
-
 // HttpClient for Keycloak
 builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
 {
@@ -54,7 +53,6 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
 });
 
 builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
-//builder.Services.AddScoped<IKeycloakClient, KeycloakClient>();
 
 // RabbitMQ Connection
 //builder.Services.AddSingleton(sp =>
@@ -87,7 +85,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = true,
             ValidIssuer = builder.Configuration["Keycloak:Authority"],            
             ValidateAudience = true,
-            ValidAudiences = new[] { "dms-auth-app"}, // Allow multiple audiences
+            ValidAudiences = new[] { "dms-auth-app"}, 
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
@@ -117,8 +115,8 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    //    app.UseSwagger();
-    //    app.UseSwaggerUI();
+    //app.UseSwagger();
+    //app.UseSwaggerUI();
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
