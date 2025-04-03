@@ -10,17 +10,11 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
 
-      # Use Postgres for the Keycloak database:
-      #DB_VENDOR: postgres
+      # Use Postgres for the Keycloak database:     
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://host.docker.internal:5432/keycloakdb
-      #DB_ADDR: keycloak-db
-      #DB_PORT: 5432
-      #DB_DATABASE: keycloakdb
       KC_DB_USERNAME: keycloakuser
       KC_DB_PASSWORD: keycloakpass
-      
-      # KEYCLOAK_HOSTNAME: keycloak.localhost
       # "start-dev" runs Keycloak in dev mode, but still uses Postgres instead of the embedded H2  
       # "start" for production mode
     command: ["start-dev"]  
@@ -42,9 +36,11 @@ services:
       POSTGRES_PASSWORD: keycloakpass
       POSTGRES_DB: keycloakdb
     ports:
-      - "5432:5432"  # Expose if you need to connect externally on 5433
+      - "5432:5432"
     volumes:
-      - ./volumes/keycloak_db_data:/var/lib/postgresql/data
+      - ./volumes/keycloak_db_data:/var/lib/postgresql/data    
+    networks:
+      - dms-network
      
   # -------------------------------
   # 3) Postgres DB for DMS.Auth
@@ -57,7 +53,7 @@ services:
       POSTGRES_PASSWORD: dmsauthpass
       POSTGRES_DB: dmsauthdb
     ports:
-      - "5433:5432"  # Expose if you want external DB access
+      - "5433:5432"
     volumes:
       - ./volumes/dms_db_data:/var/lib/postgresql/data
     networks:
@@ -89,14 +85,14 @@ services:
       ASPNETCORE_ENVIRONMENT: "Development"
 
       # Keycloak config - point the microservice to the internal Keycloak address
-      KEYCLOAK_URL: "http://keycloak:8080"
-      KEYCLOAK_REALM: "DMSRealm"
-      KEYCLOAK_CLIENT_ID: "myclient"
-      KEYCLOAK_CLIENT_SECRET: "mysecret" # or manage secrets via a safer method
+      #KEYCLOAK_URL: "http://keycloak:8080"
+      #KEYCLOAK_REALM: "DMSRealm"
+      #KEYCLOAK_CLIENT_ID: "myclient"
+      #KEYCLOAK_CLIENT_SECRET: "mysecret" # or manage secrets via a safer method
 
       # Example DB connection string for Postgres
-      # DB_CONNECTION_STRING: "Host=dmsauth-db;Port=5432;Database=dmsauthdb;User ID=dmsauth;Password=dmsauth"
-      #DB_CONNECTION_STRING: "Server=sqlserver;Database=MyDb;User ID=sa;Password=YourStrongPassw0rd;TrustServerCertificate=True"
+      #DB_CONNECTION_STRING: "Host=dmsauth-db;Port=5432;Database=dmsauthdb;User ID=dmsauth;Password=dmsauth"
+      #DB_CONNECTION_STRING: "Server=sqlserver;Database=dmsauthdb;User ID=sa;Password=dmsauth;TrustServerCertificate=True"
 
     depends_on:
       - keycloak
