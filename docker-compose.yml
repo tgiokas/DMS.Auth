@@ -11,12 +11,14 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
 
       # Use Postgres for the Keycloak database:
-      DB_VENDOR: postgres
-      DB_ADDR: keycloak-db
-      DB_PORT: 5432
-      DB_DATABASE: keycloakdb
-      DB_USER: keycloakuser
-      DB_PASSWORD: keycloakpass
+      #DB_VENDOR: postgres
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://host.docker.internal:5432/keycloakdb
+      #DB_ADDR: keycloak-db
+      #DB_PORT: 5432
+      #DB_DATABASE: keycloakdb
+      KC_DB_USERNAME: keycloakuser
+      KC_DB_PASSWORD: keycloakpass
 
       # Optional: specify hostname if needed
       # KEYCLOAK_HOSTNAME: keycloak.localhost
@@ -40,7 +42,7 @@ services:
       POSTGRES_PASSWORD: keycloakpass
       POSTGRES_DB: keycloakdb
     ports:
-      - "5433:5432"  # Expose if you need to connect externally on 5433
+      - "5432:5432"  # Expose if you need to connect externally on 5433
     volumes:
       - ./volumes/keycloak_db_data:/var/lib/postgresql/data
     # No depends_on needed since Keycloak will wait for this
@@ -48,15 +50,15 @@ services:
   # -------------------------------
   # 3) Postgres DB for DMS.Auth
   # -------------------------------
-  dms-db:
+  dmsauth-db:
     image: postgres:15.2
-    container_name: dms-db
+    container_name: dmsauth-db
     environment:
       POSTGRES_USER: dmsauthuser
       POSTGRES_PASSWORD: dmsauthpass
       POSTGRES_DB: dmsauthdb
     ports:
-      - "5434:5432"  # Expose if you want external DB access
+      - "5433:5432"  # Expose if you want external DB access
     volumes:
       - ./volumes/dms_db_data:/var/lib/postgresql/data
     # The microservice depends_on this
@@ -88,20 +90,20 @@ services:
 
       # Keycloak config - point the microservice to the internal Keycloak address
       KEYCLOAK_URL: "http://keycloak:8080"
-      KEYCLOAK_REALM: "myrealm"
+      KEYCLOAK_REALM: "DMSRealm"
       KEYCLOAK_CLIENT_ID: "myclient"
       KEYCLOAK_CLIENT_SECRET: "mysecret" # or manage secrets via a safer method
 
       # Example DB connection string for Postgres
-      # (the host is "dms-db", the container name in the same docker network)
-      DB_CONNECTION_STRING: "Host=dms-db;Port=5432;Database=dmsauthdb;User ID=dmsauthuser;Password=dmsauthpass"
+      # DB_CONNECTION_STRING: "Host=dmsauth-db;Port=5432;Database=dmsauthdb;User ID=dmsauth;Password=dmsauth"
       #DB_CONNECTION_STRING: "Server=sqlserver;Database=MyDb;User ID=sa;Password=YourStrongPassw0rd;TrustServerCertificate=True"
 
     depends_on:
       - keycloak
-      - dms-db
+      - dmsauth-db
     ports:
-      - "5000:8070"
+      - "5032:8070"
+      - "5033:8071"
 
         
 
