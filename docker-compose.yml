@@ -29,6 +29,8 @@ services:
       - keycloak-db
     ports:
       - "8080:8080"
+    networks:
+      - dms-network
     # volumes, if needed for themes or custom configs, can go here
 
   # -------------------------------
@@ -61,6 +63,8 @@ services:
       - "5433:5432"  # Expose if you want external DB access
     volumes:
       - ./volumes/dms_db_data:/var/lib/postgresql/data
+    networks:
+      - dms-network
     # The microservice depends_on this
 
     # image: mcr.microsoft.com/mssql/server:2022-latest
@@ -102,10 +106,14 @@ services:
       - keycloak
       - dmsauth-db
     ports:
-      - "5032:8070"
-      - "5033:8071"
+      - "5032:80"      
+    networks:
+      - dms-network
 
-        
+
+networks:
+  dms-network:
+    driver: bridge  
 
 
 

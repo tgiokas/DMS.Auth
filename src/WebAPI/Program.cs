@@ -117,9 +117,9 @@ if (app.Environment.IsDevelopment())
 {
     //app.UseSwagger();
     //app.UseSwaggerUI();
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    dbContext.Database.Migrate();
+    //using var scope = app.Services.CreateScope();
+    //var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    //dbContext.Database.Migrate();
 }
 
 app.UseMiddleware<LogMiddleware>(); // Enable Serilog logging for API requests
