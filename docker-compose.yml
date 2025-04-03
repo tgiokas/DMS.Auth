@@ -19,11 +19,10 @@ services:
       #DB_DATABASE: keycloakdb
       KC_DB_USERNAME: keycloakuser
       KC_DB_PASSWORD: keycloakpass
-
-      # Optional: specify hostname if needed
+      
       # KEYCLOAK_HOSTNAME: keycloak.localhost
       # "start-dev" runs Keycloak in dev mode, but still uses Postgres instead of the embedded H2  
-      # "start" for production mode (no dev tweaks)
+      # "start" for production mode
     command: ["start-dev"]  
     depends_on:
       - keycloak-db
@@ -31,7 +30,6 @@ services:
       - "8080:8080"
     networks:
       - dms-network
-    # volumes, if needed for themes or custom configs, can go here
 
   # -------------------------------
   # 2) Postgres DB for Keycloak
@@ -47,8 +45,7 @@ services:
       - "5432:5432"  # Expose if you need to connect externally on 5433
     volumes:
       - ./volumes/keycloak_db_data:/var/lib/postgresql/data
-    # No depends_on needed since Keycloak will wait for this
-  
+     
   # -------------------------------
   # 3) Postgres DB for DMS.Auth
   # -------------------------------
@@ -65,7 +62,6 @@ services:
       - ./volumes/dms_db_data:/var/lib/postgresql/data
     networks:
       - dms-network
-    # The microservice depends_on this
 
     # image: mcr.microsoft.com/mssql/server:2022-latest
     # container_name: dms-db
@@ -81,7 +77,7 @@ services:
 
 
   # -------------------------------
-  # 4) DMS.Auth (ASP.NET Core)
+  # 4) DMS.Auth 
   # -------------------------------
   dms.auth.webapi:
     image: ${DOCKER_REGISTRY-}dmsauthwebapi
@@ -106,10 +102,9 @@ services:
       - keycloak
       - dmsauth-db
     ports:
-      - "5032:80"      
+      - "5032:8070"      
     networks:
       - dms-network
-
 
 networks:
   dms-network:
