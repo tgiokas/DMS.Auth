@@ -30,7 +30,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("profile")]
-    //[Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> GetUserProfile(string username)
     {
         var response = await _userManagementService.GetUserProfile(username);
