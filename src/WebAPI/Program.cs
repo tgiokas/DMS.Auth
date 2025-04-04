@@ -1,18 +1,15 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-using RabbitMQ.Client;
+using Serilog;
 
 using DMS.Auth.Application.DependencyInjection;
 using DMS.Auth.Application.Interfaces;
 using DMS.Auth.Application.Mappings;
 using DMS.Auth.Infrastructure.DependencyInjection;
 using DMS.Auth.Infrastructure.ExternalServices;
-using DMS.Auth.Infrastructure.Database;
-using Serilog;
 using DMS.Auth.WebApi.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,21 +50,6 @@ builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
 });
 
 builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
-
-// RabbitMQ Connection
-//builder.Services.AddSingleton(sp =>
-//{
-//    var factory = new ConnectionFactory
-//    {
-//        HostName = builder.Configuration["RabbitMQ:HostName"],
-//        UserName = builder.Configuration["RabbitMQ:UserName"],
-//        Password = builder.Configuration["RabbitMQ:Password"]
-//    };
-//    return (IConnection)factory.CreateConnectionAsync();
-//});
-
-// Audit Event Publisher
-//builder.Services.AddScoped<IAuditEventPublisher, RabbitMqAuditEventPublisher>();
 
 builder.Services.AddControllers();
 

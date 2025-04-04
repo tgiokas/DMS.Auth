@@ -37,10 +37,6 @@ public static class DependencyInjection
                 default:
                     throw new ArgumentException($"Unsupported database provider: {databaseProvider}");
             }
-
-            // Common configurations
-            // options.UseSomeCommonConfiguration();
-
         });
 
         services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
