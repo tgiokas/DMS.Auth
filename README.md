@@ -1,8 +1,8 @@
-﻿# DMS.Auth microservice with Keycloak
+﻿# Authentication microservice with Keycloak
 
 ## Overview
 
-**DMS.Auth** is a standalone microservice for authentication and authorization, built using .NET 9 and integrated with **Keycloak**. 
+**Authentication** is a standalone microservice for authentication and authorization, built using .NET 9 and integrated with **Keycloak**. 
 While it is part of the broader **Document Management System (DMS)**, it is designed to work **independently** and can be used in **any modern system** 
 that requires secure identity management. 
 It integrates with Keycloak for identity access and user management, and supports both user and machine-to-machine authentication.
@@ -17,7 +17,9 @@ It integrates with Keycloak for identity access and user management, and support
 
 🔐 Multi-Factor Authentication (MFA) ✅
 
-📧 Email-based Link Authentication
+📧 Email-based Link Verification
+
+📱 Sms based Verification
 
 🌐 GSIS (www1.gsis.gr) Integration
 

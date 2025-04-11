@@ -1,11 +1,11 @@
-﻿using DMS.Auth.Application.Dtos;
+﻿using Authentication.Application.Dtos;
 
-namespace DMS.Auth.Application.Interfaces;
+namespace Authentication.Application.Interfaces;
 
 public interface IAuthenticationService
 {
     Task<LoginResult?> LoginUserAsync(string username, string password);
-    TotpSetupDto GenerateTotpCode(string username, string issuer = "DMS Auth");
+    TotpSetupDto GenerateTotpCode(string username, string issuer = "Auth");
     Task<bool> RegisterTotpAsync(string username, string code, string setupToken);
     Task<LoginResult> VerifyLoginTotpAsync(string setupToken, string code);
     Task<TokenDto?> RefreshTokenAsync(string refreshToken);

@@ -1,6 +1,6 @@
-﻿using DMS.Auth.Domain.Entities;
+﻿using Authentication.Domain.Entities;
 
-namespace DMS.Auth.Domain.Interfaces;
+namespace Authentication.Domain.Interfaces;
 
 public interface IRoleRepository
 {

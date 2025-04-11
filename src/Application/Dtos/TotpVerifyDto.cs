@@ -1,4 +1,4 @@
-﻿namespace DMS.Auth.Application.Dtos;
+﻿namespace Authentication.Application.Dtos;
 
 public class TotpVerifyDto
 {

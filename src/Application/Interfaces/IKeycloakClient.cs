@@ -1,6 +1,6 @@
-﻿using DMS.Auth.Application.Dtos;
+﻿using Authentication.Application.Dtos;
 
-namespace DMS.Auth.Application.Interfaces;
+namespace Authentication.Application.Interfaces;
 
 public interface IKeycloakClient
 {   
@@ -11,10 +11,12 @@ public interface IKeycloakClient
     Task<TokenDto?> GsisCallback(string code);
 
     Task<List<KeycloakUser>?> GetUsersAsync();
-    Task<string?> GetUserIdByUsernameAsync(string username);
+    Task<string?> GetUserIdByUsernameAsync(string username);    
     Task<KeycloakUser?> GetUserProfileAsync(string username);
+    Task<KeycloakUser?> GetUserByEmailAsync(string email);
     Task<bool> CreateUserAsync(string username, string email, string password);
     Task<bool> UpdateUserAsync(UserUpdateDto request);
+    Task UpdateUserPasswordAsync(string userId, string newPassword);
     Task<bool> DeleteUserAsync(string username);
 
     Task<List<KeycloakRole>?> GetUserRolesAsync(string username);

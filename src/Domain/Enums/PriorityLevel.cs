@@ -1,4 +1,4 @@
-﻿namespace DMS.Auth.Domain.Enums;
+﻿namespace Authentication.Domain.Enums;
 
 public enum PriorityLevel
 {

@@ -2,12 +2,12 @@
 
 using AutoMapper;
 
-using DMS.Auth.Application.Dtos;
-using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Domain.Interfaces;
-using DMS.Auth.Domain.Entities;
+using Authentication.Application.Dtos;
+using Authentication.Application.Interfaces;
+using Authentication.Domain.Interfaces;
+using Authentication.Domain.Entities;
 
-namespace DMS.Auth.Application.Services;
+namespace Authentication.Application.Services;
 
 public class UserManagementService : IUserManagementService
 {
@@ -39,7 +39,6 @@ public class UserManagementService : IUserManagementService
 
     public async Task<bool> CreateUserAsync(UserCreateDto request)
     {
-
         bool storeInLocalDb = bool.Parse(_configuration["StoreUsersInLocalDb"] ?? "false");
 
         if (storeInLocalDb)
@@ -49,7 +48,7 @@ public class UserManagementService : IUserManagementService
         }
 
         return await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);        
-    }
+    }   
 
     public async Task<bool> UpdateUserAsync(UserUpdateDto request)
     {
@@ -74,5 +73,23 @@ public class UserManagementService : IUserManagementService
     public Task<bool> EnableMfaAsync(string username)
     {
         return Task.FromResult(true);
+    }
+
+    public async Task MarkPhoneAsVerifiedAsync(string phoneNumber)
+    {
+        var user = await _userRepository.GetByPhoneNumberAsync(phoneNumber);
+        if (user == null) throw new Exception("User not found");
+
+        user.PhoneVerified = true;
+        await _userRepository.UpdateAsync(user);
+    }
+
+    public async Task MarkEmailAsVerifiedAsync(string email)
+    {
+        var user = await _userRepository.GetByEmailNumberAsync(email);
+        if (user == null) throw new Exception("User not found");
+
+        user.EmailVerified = true;
+        await _userRepository.UpdateAsync(user);
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace DMS.Auth.Application.Dtos;
+namespace Authentication.Application.Dtos;
 
 public class KeycloakUser
 {

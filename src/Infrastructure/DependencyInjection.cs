@@ -3,12 +3,12 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Domain.Interfaces;
-using DMS.Auth.Infrastructure.Database;
-using DMS.Auth.Infrastructure.Repositories;
+using Authentication.Application.Interfaces;
+using Authentication.Domain.Interfaces;
+using Authentication.Infrastructure.Database;
+using Authentication.Infrastructure.Repositories;
 
-namespace DMS.Auth.Infrastructure.DependencyInjection;
+namespace Authentication.Infrastructure.DependencyInjection;
 
 public static class DependencyInjection
 {

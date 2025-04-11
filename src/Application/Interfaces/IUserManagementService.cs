@@ -1,6 +1,6 @@
-﻿using DMS.Auth.Application.Dtos;
+﻿using Authentication.Application.Dtos;
 
-namespace DMS.Auth.Application.Interfaces;
+namespace Authentication.Application.Interfaces;
 
 public interface IUserManagementService
 {
@@ -12,4 +12,6 @@ public interface IUserManagementService
     Task<List<KeycloakRole>?> GetUserRolesAsync(string username);
     Task<bool> AssignRoleAsync(string username, string roleId);
     Task<bool> EnableMfaAsync(string username);
+    Task MarkPhoneAsVerifiedAsync(string phoneNumber);
+    Task MarkEmailAsVerifiedAsync(string email);
 }

@@ -3,11 +3,11 @@ using Microsoft.Extensions.Logging;
 
 using OtpNet;
 
-using DMS.Auth.Application.Dtos;
-using DMS.Auth.Application.Interfaces;
-using DMS.Auth.Domain.Interfaces;
+using Authentication.Application.Dtos;
+using Authentication.Application.Interfaces;
+using Authentication.Domain.Interfaces;
 
-namespace DMS.Auth.Application.Services;
+namespace Authentication.Application.Services;
 
 public class AuthenticationService : IAuthenticationService
 {
@@ -73,7 +73,7 @@ public class AuthenticationService : IAuthenticationService
     }        
 
     /// Generate TOTP QR Code and Secret 
-    public TotpSetupDto GenerateTotpCode(string username, string issuer = "DMS Auth")
+    public TotpSetupDto GenerateTotpCode(string username, string issuer = "Auth")
     {
         // 1. Generate 20-byte secret
         var secretKey = KeyGeneration.GenerateRandomKey(20);

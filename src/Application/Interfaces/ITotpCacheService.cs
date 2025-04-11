@@ -1,6 +1,6 @@
-﻿using DMS.Auth.Application.Dtos;
+﻿using Authentication.Application.Dtos;
 
-namespace DMS.Auth.Application.Interfaces;
+namespace Authentication.Application.Interfaces;
 
 public interface ITotpCacheService
 {

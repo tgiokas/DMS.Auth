@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-using DMS.Auth.Domain.Entities;
-using DMS.Auth.Application.Interfaces;
+using Authentication.Domain.Entities;
+using Authentication.Application.Interfaces;
 
-namespace DMS.Auth.Infrastructure.Database;
+namespace Authentication.Infrastructure.Database;
 
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {

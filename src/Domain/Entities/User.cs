@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DMS.Auth.Domain.Entities;
+namespace Authentication.Domain.Entities;
 
 public class User
 {
@@ -8,8 +8,11 @@ public class User
     public Guid Id { get; private set; }
     [Required]
     public string Username { get; private set; } = string.Empty;
-    public string Email { get; private set; } = string.Empty;   
+    public string Email { get; private set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
     public bool IsMfaEnabled { get; private set; }
+    public bool PhoneVerified { get; set; }
+    public bool EmailVerified { get; set; }
     public DateTime CreatedAt { get; private set; }
 
     public void UpdateProfile(string newEmail)

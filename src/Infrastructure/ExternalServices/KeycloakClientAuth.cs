@@ -5,10 +5,10 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-using DMS.Auth.Application.Dtos;
-using DMS.Auth.Application.Interfaces;
+using Authentication.Application.Dtos;
+using Authentication.Application.Interfaces;
 
-namespace DMS.Auth.Infrastructure.ExternalServices;
+namespace Authentication.Infrastructure.ExternalServices;
 
 public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
 {

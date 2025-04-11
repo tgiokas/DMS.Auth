@@ -6,7 +6,7 @@
     <DockerPublishLocally>False</DockerPublishLocally>
     <ProjectGuid>13e6debd-7a4c-4dff-b59e-c3e244a7459d</ProjectGuid>
     <DockerServiceUrl>{Scheme}://localhost:{ServicePort}</DockerServiceUrl>
-    <DockerServiceName>dms.auth.webapi</DockerServiceName>
+    <DockerServiceName>Authentication</DockerServiceName>
   </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.yml" />

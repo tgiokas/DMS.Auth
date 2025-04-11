@@ -23,7 +23,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - dms-network
+      - auth-network
 
   # -------------------------------
   # 2) Postgres DB for Keycloak
@@ -40,27 +40,27 @@ services:
     volumes:
       - ./volumes/keycloak_db_data:/var/lib/postgresql/data    
     networks:
-      - dms-network
+      - auth-network
      
   # -------------------------------
-  # 3) Postgres DB for DMS.Auth
+  # 3) Postgres DB for Authentication
   # -------------------------------
-  dmsauth-db:
+  auth-db:
     image: postgres:15.2
-    container_name: dmsauth-db
+    container_name: auth-db
     environment:
-      POSTGRES_USER: dmsauthuser
-      POSTGRES_PASSWORD: dmsauthpass
-      POSTGRES_DB: dmsauthdb
+      POSTGRES_USER: authuser
+      POSTGRES_PASSWORD: authpass
+      POSTGRES_DB: authdb
     ports:
       - "5433:5432"
     volumes:
-      - ./volumes/dms_db_data:/var/lib/postgresql/data
+      - ./volumes/auth_db_data:/var/lib/postgresql/data
     networks:
-      - dms-network
+      - auth-network
 
     # image: mcr.microsoft.com/mssql/server:2022-latest
-    # container_name: dms-db
+    # container_name: auth-db
     # environment:
     #   SA_PASSWORD: "YourStrongPassw0rd"
     #   ACCEPT_EULA: "Y"
@@ -73,13 +73,13 @@ services:
 
 
   # -------------------------------
-  # 4) DMS.Auth 
+  # 4) Authentication 
   # -------------------------------
-  dms.auth.webapi:
-    image: ${DOCKER_REGISTRY-}dmsauthwebapi
+  Authentication.api:
+    image: ${DOCKER_REGISTRY-}authapi
     build:
       context: .
-      dockerfile: src/WebAPI/Dockerfile   
+      dockerfile: src/API/Dockerfile   
     environment:
       # .NET environment
       ASPNETCORE_ENVIRONMENT: "Development"
@@ -91,19 +91,19 @@ services:
       #KEYCLOAK_CLIENT_SECRET: "mysecret" # or manage secrets via a safer method
 
       # Example DB connection string for Postgres
-      #DB_CONNECTION_STRING: "Host=dmsauth-db;Port=5432;Database=dmsauthdb;User ID=dmsauth;Password=dmsauth"
-      #DB_CONNECTION_STRING: "Server=sqlserver;Database=dmsauthdb;User ID=sa;Password=dmsauth;TrustServerCertificate=True"
+      #DB_CONNECTION_STRING: "Host=auth-db;Port=5432;Database=authdb;User ID=auth;Password=auth"
+      #DB_CONNECTION_STRING: "Server=sqlserver;Database=authdb;User ID=sa;Password=auth;TrustServerCertificate=True"
 
     depends_on:
       - keycloak
-      - dmsauth-db
+      - auth-db
     ports:
       - "5032:8070"      
     networks:
-      - dms-network
+      - auth-network
 
 networks:
-  dms-network:
+  auth-network:
     driver: bridge  
 
 

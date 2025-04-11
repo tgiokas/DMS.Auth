@@ -1,4 +1,4 @@
-﻿namespace DMS.Auth.Application.Interfaces;
+﻿namespace Authentication.Application.Interfaces;
 
 public interface IApplicationDbContext
 {

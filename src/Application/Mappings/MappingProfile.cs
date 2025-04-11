@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
-using DMS.Auth.Application.Dtos;
-using DMS.Auth.Domain.Entities;
+using Authentication.Application.Dtos;
+using Authentication.Domain.Entities;
 
-namespace DMS.Auth.Application.Mappings;
+namespace Authentication.Application.Mappings;
 
 public class MappingProfile : Profile
 {

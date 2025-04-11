@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DMS.Auth.Application.Dtos;
+namespace Authentication.Application.Dtos;
 
 public class UserUpdateDto
 {   

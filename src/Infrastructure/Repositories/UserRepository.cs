@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-using DMS.Auth.Domain.Entities;
-using DMS.Auth.Domain.Interfaces;
-using DMS.Auth.Infrastructure.Database;
+using Authentication.Domain.Entities;
+using Authentication.Domain.Interfaces;
+using Authentication.Infrastructure.Database;
 
-namespace DMS.Auth.Infrastructure.Repositories;
+namespace Authentication.Infrastructure.Repositories;
 
 public class UserRepository : IUserRepository
 {
@@ -24,6 +24,18 @@ public class UserRepository : IUserRepository
     {
         return await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Username == username);
+    }
+
+    public async Task<User?> GetByPhoneNumberAsync(string phoneNumber)
+    {
+        return await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
+    }
+
+    public async Task<User?> GetByEmailNumberAsync(string email)
+    {
+        return await _dbContext.Users
+            .FirstOrDefaultAsync(u => u.Email == email);
     }
 
     public async Task AddAsync(User user)

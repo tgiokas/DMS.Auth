@@ -1,4 +1,4 @@
-﻿namespace DMS.Auth.Domain.Interfaces;
+﻿namespace Authentication.Domain.Interfaces;
 
 public interface ITotpRepository
 {
