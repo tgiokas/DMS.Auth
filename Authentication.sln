@@ -26,16 +26,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMS.Document.WebApi", "WebA
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{C7BDDA33-26A6-4B1C-ABB4-79D47E27CA55}"
 	ProjectSection(SolutionItems) = preProject
-		images\1. Create Client.png = images\1. Create Client.png
 		images\1.CreateClient.png = images\1.CreateClient.png
-		images\2. Configure Client.png = images\2. Configure Client.png
-		images\3. Assign ServiceAccount Roles to Client.png = images\3. Assign ServiceAccount Roles to Client.png
-		images\4. Client-ClientScopes.png = images\4. Client-ClientScopes.png
-		images\5. Configure a new Mapper.png = images\5. Configure a new Mapper.png
-		images\6. Add Mapper Audience.png = images\6. Add Mapper Audience.png
-		images\7. Keep Client Secret.png = images\7. Keep Client Secret.png
-		images\8. Realm Settings User Profile.png = images\8. Realm Settings User Profile.png
-		images\9. FirstName required Field Off.png = images\9. FirstName required Field Off.png
+		images\2.ConfigureClient.png = images\2.ConfigureClient.png
+		images\3.AssignServiceAccountRoles2Client.png = images\3.AssignServiceAccountRoles2Client.png
+		images\4.Client-ClientScopes.png = images\4.Client-ClientScopes.png
+		images\5.ConfigureNewMapper.png = images\5.ConfigureNewMapper.png
+		images\6.AddMapperAudience.png = images\6.AddMapperAudience.png
+		images\7.KeepClientSecret.png = images\7.KeepClientSecret.png
+		images\8.RealmSettingsUserProfile.png = images\8.RealmSettingsUserProfile.png
+		images\9.FirstNameRequiredFieldOff.png = images\9.FirstNameRequiredFieldOff.png
 	EndProjectSection
 EndProject
 Global

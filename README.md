@@ -105,7 +105,7 @@ This microservice handles **authentication and MFA (TOTP)** using:
 ![Configure Client](images/2.ConfigureClient.png)
 
 ### 3. Assign ServiceAccount Roles to Client
-![Client Credentials](images/3.AssignServiceAccountRolesto Client.png)
+![Client Credentials](images/3.AssignServiceAccountRoles2Client.png)
 
 ### 4. Client-ClientScopes
 ![Client Scopes](images/4.Client-ClientScopes.png)
