@@ -99,28 +99,28 @@ This microservice handles **authentication and MFA (TOTP)** using:
 ## Keycloak Configuration
 
 ### 1. Create Client
-![Create Client](images/1. Create Client.png)
+![Create Client](images/1.CreateClient.png)
 
 ### 2. Configure Client
-![Configure Client](images/2.%20Configure%20Client.png)
+![Configure Client](images/2.ConfigureClient.png)
 
-### 3. Client Credentials
-![Client Credentials](images/3.%20Client%20Credentials.png)
+### 3. Assign ServiceAccount Roles to Client
+![Client Credentials](images/3.AssignServiceAccountRolesto Client.png)
 
-### 4. Client Scopes
-![Client Scopes](images/4.%20Client%20Scopes.png)
+### 4. Client-ClientScopes
+![Client Scopes](images/4.Client-ClientScopes.png)
 
-### 5. Mappers
-![Mappers](images/5.%20Mappers.png)
+### 5. Configure a new Mapper
+![Mappers](images/5.ConfigureNewMapper.png)
 
-### 6. Roles
-![Roles](images/6.%20Roles.png)
+### 6. Add Mapper Audience
+![Roles](images/6.AddMapperAudience.png)
 
-### 7. Users
-![Users](images/7.%20Users.png)
+### 7. Keep Client Secret
+![Users](images/7.KeepClientSecret.png)
 
-### 8. User Attributes
-![User Attributes](images/8.%20User%20Attributes.png)
+### 8. Realm Settings User Profile
+![User Attributes](images/8.RealmSettingsUserProfile.png)
 
 ### 9. FirstName required Field Off
-![FirstName required Field Off](images/9.%20FirstName%20required%20Field%20Off.png)
+![FirstName required Field Off](images/9.FirstNameRequiredFieldOff.png)
