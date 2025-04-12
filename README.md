@@ -99,7 +99,7 @@ This microservice handles **authentication and MFA (TOTP)** using:
 ## Keycloak Configuration
 
 ### 1. Create Client
-![Create Client](images/1.%20Create%20Client.png)
+![Create Client](images/1. Create Client.png)
 
 ### 2. Configure Client
 ![Configure Client](images/2.%20Configure%20Client.png)
