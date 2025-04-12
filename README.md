@@ -122,5 +122,5 @@ This microservice handles **authentication and MFA (TOTP)** using:
 ### 8. Realm Settings User Profile
 ![User Attributes](images/8.RealmSettingsUserProfile.png)
 
-### 9. FirstName required Field Off
+### 9. FirstName & LastNamerequired Field Off
 ![FirstName required Field Off](images/9.FirstNameRequiredFieldOff.png)
