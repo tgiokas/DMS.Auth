@@ -77,6 +77,10 @@ namespace Authentication.Infrastructure.Migrations
                     b.Property<bool>("IsMfaEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("KeycloakUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasColumnType("text");

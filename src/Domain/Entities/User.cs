@@ -7,12 +7,13 @@ public class User
     [Key]
     public Guid Id { get; private set; }
     [Required]
-    public string Username { get; private set; } = string.Empty;
-    public string Email { get; private set; } = string.Empty;
+    public string KeycloakUserId { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
-    public bool IsMfaEnabled { get; private set; }
-    public bool PhoneVerified { get; set; }
-    public bool EmailVerified { get; set; }
+    public bool IsMfaEnabled { get; set; }
+    public bool PhoneVerified { get; set; } = false;
+    public bool EmailVerified { get; set; } = false;
     public DateTime CreatedAt { get; private set; }
 
     public void UpdateProfile(string newEmail)
@@ -27,7 +28,7 @@ public class User
 
     public void EnableMfa()
     {
-        IsMfaEnabled = true;       
+        IsMfaEnabled = true;
     }
 
     public void DisableMfa()

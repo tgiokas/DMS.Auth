@@ -2,7 +2,7 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
 
-namespace Authentication.Applicationn.ApiClient;
+namespace Authentication.Infrastructure.ApiClient;
 
 public abstract class ApiClientBase
 {
@@ -21,7 +21,7 @@ public abstract class ApiClientBase
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage request)
+    protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
     {
         string requestBody = request.Content != null ? await request.Content.ReadAsStringAsync() : string.Empty;
         var sw = Stopwatch.StartNew();
@@ -29,7 +29,7 @@ public abstract class ApiClientBase
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.SendAsync(request);
+            response = await _httpClient.SendAsync(request, cancellationToken);
         }
         catch (Exception ex)
         {

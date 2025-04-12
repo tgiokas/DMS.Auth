@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-using AutoMapper;
-
 using Authentication.Application.Dtos;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Interfaces;
@@ -13,18 +11,15 @@ public class UserManagementService : IUserManagementService
 {
     private readonly IKeycloakClient _keycloakClient;
     private readonly IUserRepository _userRepository;
-    private readonly IConfiguration _configuration;
-    private readonly IMapper _mapper;   
+    private readonly IConfiguration _configuration;  
 
     public UserManagementService(IKeycloakClient keycloakClient, 
         IUserRepository userRepository, 
-        IConfiguration configuration, 
-        IMapper mapper)
+        IConfiguration configuration)
     {
         _keycloakClient = keycloakClient;
         _userRepository = userRepository;
-        _configuration = configuration;
-        _mapper = mapper;
+        _configuration = configuration;        
     }
 
     public async Task<List<KeycloakUser>?> GetUsersAsync()
@@ -39,16 +34,30 @@ public class UserManagementService : IUserManagementService
 
     public async Task<bool> CreateUserAsync(UserCreateDto request)
     {
+        var keyclaokUserId = await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);
+
         bool storeInLocalDb = bool.Parse(_configuration["StoreUsersInLocalDb"] ?? "false");
 
-        if (storeInLocalDb)
+        if (!string.IsNullOrEmpty(keyclaokUserId))
         {
-            var user = _mapper.Map<User>(request);
-            await _userRepository.AddAsync(user);
+            if (storeInLocalDb)
+            {
+                var user = new User
+                {
+                    KeycloakUserId = keyclaokUserId,
+                    Username = request.Username,
+                    Email = request.Email,
+                    IsMfaEnabled = request.IsMfaEnabled ?? false
+                };
+                await _userRepository.AddAsync(user);
+            }
+            return true;
         }
-
-        return await _keycloakClient.CreateUserAsync(request.Username, request.Email, request.Password);        
-    }   
+        else
+        {
+            return false;
+        }
+    } 
 
     public async Task<bool> UpdateUserAsync(UserUpdateDto request)
     {

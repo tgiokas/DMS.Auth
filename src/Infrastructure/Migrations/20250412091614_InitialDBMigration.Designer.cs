@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Authentication.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250411130026_InitialDBMigration")]
+    [Migration("20250412091614_InitialDBMigration")]
     partial class InitialDBMigration
     {
         /// <inheritdoc />
@@ -79,6 +79,10 @@ namespace Authentication.Infrastructure.Migrations
 
                     b.Property<bool>("IsMfaEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("KeycloakUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()

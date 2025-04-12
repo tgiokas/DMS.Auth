@@ -4,8 +4,6 @@ using Microsoft.Extensions.Logging;
 
 using Authentication.Application.Dtos;
 using Authentication.Application.Interfaces;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 
 namespace Authentication.Infrastructure.ExternalServices;
 
@@ -58,9 +56,10 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
         return users?.FirstOrDefault();
     }
 
-    public async Task<bool> CreateUserAsync(string username, string email, string password)
+    public async Task<string> CreateUserAsync(string username, string email, string password)
     {
         bool emailVerified = bool.Parse(_configuration["EmailVerified"] ?? "true");
+        var createdUserId = string.Empty;
 
         var newUser = new KeycloakUser
         {
@@ -79,31 +78,26 @@ public partial class KeycloakClient : KeycloakApiClient, IKeycloakClient
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, requestUrl, new StringContent(jsonPayload, Encoding.UTF8, "application/json"));
 
         var response = await SendRequestAsync(request);
-        //return response.IsSuccessStatusCode;
 
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
             _logger.LogError("Failed to create user in Keycloak: {Response}", error);
-            return false;
+            return createdUserId;
         }
 
-        if (!emailVerified)
+        // Keycloak returns 201 Created, with a 'Location' header of the form:
+        // http://keycloak-host/admin/realms/<realm>/users/<userId>
+        var locationHeader = response.Headers.Location;
+
+        if (locationHeader != null)
         {
-            // Keycloak returns 201 Created, with a 'Location' header of the form:
-            // http://keycloak-host/admin/realms/<realm>/users/<userId>
-            var locationHeader = response.Headers.Location;
-            if (locationHeader != null)
-            {
-                // Extract the ID from the final segment:
-                var locationSegments = locationHeader.AbsolutePath.Split('/');
-                var createdUserId = locationSegments.LastOrDefault();
-
-                await SendVerificationEmail(createdUserId);
-            }
+            // Extract the ID from the final segment:
+            var locationSegments = locationHeader.AbsolutePath.Split('/');
+            createdUserId = locationSegments.LastOrDefault() ?? string.Empty;                  
         }
-        
-        return true;
+
+        return createdUserId;
     }
 
     public async Task<bool> UpdateUserAsync(UserUpdateDto userUpdateDto)

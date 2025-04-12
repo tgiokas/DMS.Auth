@@ -3,32 +3,32 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 
 using Authentication.Application.Interfaces;
-using Authentication.Applicationn.ApiClient;
 using Authentication.Application.Dtos;
+using Authentication.Infrastructure.ApiClient;
 
-namespace Authentication.Application.Services;
+namespace Authentication.Infrastructure.Services;
 
-public class EmailSenderService : ApiClientBase, IEmailSender
+public class SmsSenderService : ApiClientBase, ISmsSender
 {
     private readonly string _notificationServiceUrl;
 
-    public EmailSenderService(HttpClient httpClient,
+    public SmsSenderService(HttpClient httpClient,
         IConfiguration config,
-        ILogger<EmailSenderService> logger)
+        ILogger<SmsSenderService> logger)
         : base(httpClient, logger)
     {
         _notificationServiceUrl = config["NotificationService:BaseUrl"]
             ?? throw new InvalidOperationException("NotificationService:BaseUrl not configured");
     }
 
-    public async Task<bool> SendVerificationEmailAsync(string recipient, string subject, string message)
+    public async Task<bool> SendVerificationSmsAsync(string phoneNumber, string message)
     {
         var notification = new NotificationRequestDto
         {
-            Recipient = recipient,
-            Subject = subject,
+            Recipient = phoneNumber,
+            Subject = "New Message",
             Message = message,
-            Channel = "email"
+            Channel = "sms"
         };
 
         var requestUrl = $"{_notificationServiceUrl}/api/notifications";

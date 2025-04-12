@@ -18,7 +18,7 @@ public class UserController : ControllerBase
     }      
     
     [HttpGet("users")]
-    [Authorize(Policy = "AdminOnly")]
+    //[Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> GetUsers()
     {
         var response = await _userManagementService.GetUsersAsync();

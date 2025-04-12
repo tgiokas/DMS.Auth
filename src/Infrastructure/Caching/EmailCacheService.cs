@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
-
 using Authentication.Application.Interfaces;
 
 namespace Authentication.Infrastructure.Caching;
@@ -23,7 +22,8 @@ public class EmailCacheService : IEmailCacheService
 
     public string? GetEmailByToken(string token)
     {
-        return _cache.TryGetValue(GetKey(token), out string? email) ? email : null;
+        _cache.TryGetValue(GetKey(token), out string? email);
+        return email;
     }
 
     public void RemoveToken(string token)

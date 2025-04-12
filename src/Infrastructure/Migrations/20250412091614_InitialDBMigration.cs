@@ -28,6 +28,7 @@ namespace Authentication.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    KeycloakUserId = table.Column<string>(type: "text", nullable: false),
                     Username = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Email = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
                     PhoneNumber = table.Column<string>(type: "text", nullable: false),

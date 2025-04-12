@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using Authentication.Application.Dtos;
-using Authentication.Applicationn.ApiClient;
+using Authentication.Infrastructure.ApiClient;
 
 namespace Authentication.Infrastructure.ExternalServices;
 

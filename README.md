@@ -93,3 +93,34 @@ This microservice handles **authentication and MFA (TOTP)** using:
    → Validates 6-digit TOTP code  
    → If correct, issues Keycloak token using cached login  
    → Returns `access_token`, `refresh_token`
+
+---
+
+## Keycloak Configuration
+
+### 1. Create Client
+![Create Client](images/1.%20Create%20Client.png)
+
+### 2. Configure Client
+![Configure Client](images/2.%20Configure%20Client.png)
+
+### 3. Client Credentials
+![Client Credentials](images/3.%20Client%20Credentials.png)
+
+### 4. Client Scopes
+![Client Scopes](images/4.%20Client%20Scopes.png)
+
+### 5. Mappers
+![Mappers](images/5.%20Mappers.png)
+
+### 6. Roles
+![Roles](images/6.%20Roles.png)
+
+### 7. Users
+![Users](images/7.%20Users.png)
+
+### 8. User Attributes
+![User Attributes](images/8.%20User%20Attributes.png)
+
+### 9. FirstName required Field Off
+![FirstName required Field Off](images/9.%20FirstName%20required%20Field%20Off.png)

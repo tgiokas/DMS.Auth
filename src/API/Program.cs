@@ -6,13 +6,13 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
 using Authentication.Api.Middlewares;
-using Authentication.Application.DependencyInjection;
+using Authentication.Application;
 using Authentication.Application.Interfaces;
-using Authentication.Application.Mappings;
-using Authentication.Infrastructure.DependencyInjection;
+
+using Authentication.Infrastructure;
 using Authentication.Infrastructure.ExternalServices;
 using Authentication.Infrastructure.Caching;
-using Authentication.Application.Services;
+using Authentication.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,9 +29,6 @@ var builder = WebApplication.CreateBuilder(args);
 Log.Information("Configuring is starting...");
 
 builder.Host.UseSerilog();
-
-// Add AutoMapper
-builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Add memory cache
 builder.Services.AddMemoryCache();
