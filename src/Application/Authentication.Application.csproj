@@ -20,8 +20,4 @@
     <ProjectReference Include="..\Domain\Authentication.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Mappings\" />
-  </ItemGroup>
-
 </Project>

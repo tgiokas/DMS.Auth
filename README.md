@@ -17,7 +17,7 @@ It integrates with Keycloak for identity access and user management, and support
 
 🔐 Multi-Factor Authentication (MFA) ✅
 
-📧 Email-based Link Verification
+📧 Email-based Link Verification ✅
 
 📱 Sms based Verification
 
@@ -59,6 +59,35 @@ The configuration can be found in the `appsettings.json` file.
 
 ---
 
+## Keycloak Configuration
+
+### 1. Create Client
+![Create Client](images/1.CreateClient.png)
+
+### 2. Configure Client
+![Configure Client](images/2.ConfigureClient.png)
+
+### 3. Assign ServiceAccount Roles to Client
+![Assign ServiceAccount](images/3.AssignServiceAccountRoles2Client.png)
+
+### 4. Client-ClientScopes
+![Client Scopes](images/4.Client-ClientScopes.png)
+
+### 5. Configure a new Mapper
+![Mapper](images/5.ConfigureNewMapper.png)
+
+### 6. Add Mapper Audience
+![Mapper Audience](images/6.AddMapperAudience.png)
+
+### 7. Keep Client Secret
+![Client Secret](images/7.KeepClientSecret.png)
+
+### 8. Realm Settings User Profile
+![Realm Settings](images/8.RealmSettingsUserProfile.png)
+
+### 9. FirstName & LastName required Field Off
+![User Profile](images/9.FirstNameRequiredFieldOff.png)
+
 ## MFA-First Login Flow with TOTP
 
 This microservice handles **authentication and MFA (TOTP)** using:
@@ -95,32 +124,3 @@ This microservice handles **authentication and MFA (TOTP)** using:
    → Returns `access_token`, `refresh_token`
 
 ---
-
-## Keycloak Configuration
-
-### 1. Create Client
-![Create Client](images/1.CreateClient.png)
-
-### 2. Configure Client
-![Configure Client](images/2.ConfigureClient.png)
-
-### 3. Assign ServiceAccount Roles to Client
-![Client Credentials](images/3.AssignServiceAccountRoles2Client.png)
-
-### 4. Client-ClientScopes
-![Client Scopes](images/4.Client-ClientScopes.png)
-
-### 5. Configure a new Mapper
-![Mappers](images/5.ConfigureNewMapper.png)
-
-### 6. Add Mapper Audience
-![Roles](images/6.AddMapperAudience.png)
-
-### 7. Keep Client Secret
-![Users](images/7.KeepClientSecret.png)
-
-### 8. Realm Settings User Profile
-![User Attributes](images/8.RealmSettingsUserProfile.png)
-
-### 9. FirstName & LastNamerequired Field Off
-![FirstName required Field Off](images/9.FirstNameRequiredFieldOff.png)

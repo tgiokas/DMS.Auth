@@ -24,19 +24,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Authentication.Api", "src\A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMS.Document.WebApi", "WebApplication1\DMS.Document.WebApi.csproj", "{A59849AF-E859-4A13-94DC-8251F2C2F677}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "images", "images", "{C7BDDA33-26A6-4B1C-ABB4-79D47E27CA55}"
-	ProjectSection(SolutionItems) = preProject
-		images\1.CreateClient.png = images\1.CreateClient.png
-		images\2.ConfigureClient.png = images\2.ConfigureClient.png
-		images\3.AssignServiceAccountRoles2Client.png = images\3.AssignServiceAccountRoles2Client.png
-		images\4.Client-ClientScopes.png = images\4.Client-ClientScopes.png
-		images\5.ConfigureNewMapper.png = images\5.ConfigureNewMapper.png
-		images\6.AddMapperAudience.png = images\6.AddMapperAudience.png
-		images\7.KeepClientSecret.png = images\7.KeepClientSecret.png
-		images\8.RealmSettingsUserProfile.png = images\8.RealmSettingsUserProfile.png
-		images\9.FirstNameRequiredFieldOff.png = images\9.FirstNameRequiredFieldOff.png
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -76,7 +63,6 @@ Global
 		{382C68E9-8990-4D62-B23C-674B05A61004} = {7AEB5C06-A0DF-483B-AA72-2E8770442FE6}
 		{70C1ACA9-EC3B-4883-B17E-E34FE72AB898} = {7AEB5C06-A0DF-483B-AA72-2E8770442FE6}
 		{0EE0CF46-1A2F-4CEA-AE1D-C6026D2BDFD6} = {7AEB5C06-A0DF-483B-AA72-2E8770442FE6}
-		{C7BDDA33-26A6-4B1C-ABB4-79D47E27CA55} = {0581EC4C-FD1A-4D58-B92A-DA2FF2A44FD7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {276DEDC4-FC36-4B00-B21C-2F846797FADB}
