@@ -25,20 +25,30 @@ public class LogMiddleware
         httpContext.Response.Body = newMemoryStream;
 
         var sw = Stopwatch.StartNew();
-        await _next(httpContext);
-        sw.Stop();
+        try
+        {
+            await _next(httpContext);
+        }
+        finally
+        {
+            sw.Stop();
 
-        string responseBody = await GetResponseBody(httpContext.Response);
-        int statusCode = httpContext.Response.StatusCode;
-        LogLevel loglevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
+            string responseBody = await GetResponseBody(httpContext.Response);
+            int statusCode = httpContext.Response.StatusCode;
+            LogLevel loglevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
 
-        // Log using Serilog
-        logger.Log(loglevel, LogMessageTemplate, "Incoming", httpContext.Request.Method, 
-            httpContext.Request.Path, requestBody, statusCode, responseBody, (long)sw.Elapsed.TotalMilliseconds);
+            // Log using Serilog
+            logger.Log(loglevel, LogMessageTemplate, "Incoming", httpContext.Request.Method,
+                httpContext.Request.Path, requestBody, statusCode, responseBody, (long)sw.Elapsed.TotalMilliseconds);
 
-        httpContext.Response.Body = originalBodyStream;
-
-        await httpContext.Response.WriteAsync(responseBody);
+            httpContext.Response.Body = originalBodyStream;
+            
+            if (!httpContext.Response.HasStarted)
+            {
+                newMemoryStream.Seek(0, SeekOrigin.Begin);
+                await newMemoryStream.CopyToAsync(originalBodyStream);
+            }
+        }
     }
 
     private static async Task<string> GetRequestBody(HttpRequest request)

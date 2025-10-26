@@ -1,49 +1,94 @@
-﻿using Microsoft.Extensions.Logging;
-using Authentication.Application.Interfaces;
+﻿using Authentication.Application.Interfaces;
+using Authentication.Application.Dtos;
 
 namespace Authentication.Application.Services;
 
 public class SmsVerificationService : ISmsVerificationService
 {
     private readonly ISmsSender _smsSender;
-    private readonly ISmsCacheService _cache;
-    private readonly IUserManagementService _userManagement;
-    private readonly ILogger<SmsVerificationService> _logger;
+    private readonly ISmsCache _smsCache;
+    private readonly IUserManagementService _userManagement;    
 
-    public SmsVerificationService(ISmsSender smsSender, 
-        ISmsCacheService cache,         
-        IUserManagementService userManagementService,
-        ILogger<SmsVerificationService> logger)
+    public SmsVerificationService(
+        ISmsSender smsSender,
+        ISmsCache cache,
+        IUserManagementService userManagementService)        
     {
         _smsSender = smsSender;
-        _cache = cache;
-        _userManagement = userManagementService;
-        _logger = logger;
+        _smsCache = cache;
+        _userManagement = userManagementService;        
     }
 
-    public async Task SendVerificationSmsAsync(string phoneNumber)
+    public async Task<Result<bool>> SendVerificationSmsAsync(string phoneNumber)
     {
-        var code = GenerateCode(); 
-        _cache.StoreCode(phoneNumber, code, TimeSpan.FromMinutes(5));
-
+        var code = GenerateCode();
+        _smsCache.StoreCode(phoneNumber, code, TimeSpan.FromMinutes(5));
         var message = $"Your verification code is: {code}";
-        await _smsSender.SendVerificationSmsAsync(phoneNumber, message);
 
-        _logger.LogInformation("SMS verification code sent to {PhoneNumber}", phoneNumber);
+        try
+        {
+            var sent = await _smsSender.SendVerificationSmsAsync(phoneNumber, message);
+            if (sent)
+            {                
+                return Result<bool>.Ok(data: true, message: "SMS verification published");
+            }
+            else
+            {
+                return Result<bool>.Fail("Error publishing SMS verification");
+            }
+        }
+        catch (Exception)
+        {
+            return Result<bool>.Fail("Error publishing SMS verification");
+        }
     }
 
-    public async Task<bool> VerifySmsAsync(string phoneNumber, string code)
+    public async Task<Result<bool>> VerifySmsAsync(string phoneNumber, string code)
     {
-        var cachedCode = _cache.GetCode(phoneNumber);
+        var cachedCode = _smsCache.GetCode(phoneNumber);
         var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
 
-        if (!isValid)       
-            return false;
+        if (isValid)
+            _smsCache.RemoveCode(phoneNumber);
 
-        _cache.RemoveCode(phoneNumber);
+        await _userManagement.PhoneVerifiedAsync(phoneNumber);
 
-        await _userManagement.MarkPhoneAsVerifiedAsync(phoneNumber);
-        return true;
+        return Result<bool>.Ok(data: true, message: "Email verification Successfull");
+    }
+
+    public async Task<Result<bool>> SendMfaSmsAsync(string phoneNumber)
+    {
+        var code = GenerateCode();
+        _smsCache.StoreCode(phoneNumber, code, TimeSpan.FromMinutes(5));
+        var message = $"Your verification code is: {code}";
+
+        try
+        {
+            var sent = await _smsSender.SendVerificationSmsAsync(phoneNumber, message);
+            if (sent)
+            {
+                return Result<bool>.Ok(data: true, message: "Sms verification sent");
+            }
+            else
+            {
+                return Result<bool>.Fail("Sms verification failed to send");
+            }
+        }
+        catch (Exception)
+        {
+            return Result<bool>.Fail("Error sending SMS verification");
+        }
+    }
+    
+    public bool VerifyMfaCode(string phoneNumber, string code)
+    {
+        var cachedCode = _smsCache.GetCode(phoneNumber);
+        var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
+
+        if (isValid)
+            _smsCache.RemoveCode(phoneNumber);
+
+        return isValid;
     }
 
     private string GenerateCode()

@@ -1,38 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Authentication.Domain.Enums;
 
 namespace Authentication.Domain.Entities;
 
 public class User
 {
-    [Key]
-    public Guid Id { get; private set; }
-    [Required]
-    public string KeycloakUserId { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string PhoneNumber { get; set; } = string.Empty;
-    public bool IsMfaEnabled { get; set; }
-    public bool PhoneVerified { get; set; } = false;
-    public bool EmailVerified { get; set; } = false;
-    public DateTime CreatedAt { get; private set; }
-
-    public void UpdateProfile(string newEmail)
-    {
-        if (string.IsNullOrWhiteSpace(newEmail) || !newEmail.Contains("@"))
-        {
-            throw new InvalidOperationException("Invalid email address.");
-        }
-
-        Email = newEmail;
-    }
-
-    public void EnableMfa()
-    {
-        IsMfaEnabled = true;
-    }
-
-    public void DisableMfa()
-    {
-        IsMfaEnabled = false;
-    }
+    public int Id { get; set; }
+    public required Guid KeycloakUserId { get; set; }
+    public required string Username { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public required string Email { get; set; }
+    public string? PhoneNumber { get; set; }
+    public bool IsEnabled { get; set; }
+    public bool IsAdmin { get; set; }   
+    public MfaType MfaType { get; set; } = MfaType.None;
+    public bool PhoneVerified { get; set; }
+    public bool EmailVerified { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ModifiedAt { get; set; }
 }

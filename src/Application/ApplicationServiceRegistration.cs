@@ -10,11 +10,14 @@ public static class ApplicationServiceRegistration
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {       
         services.AddScoped<IAuthenticationService, AuthenticationService>();
-        services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+        services.AddScoped<IAuthorizationService, AuthorizationService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IRoleManagementService, RoleManagementService>();
         services.AddScoped<IMfaService, MfaService>();
-        services.AddScoped<IPasswordForgotService, PasswordForgotService>();
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
+        services.AddScoped<IEmailVerificationService, EmailVerificationService>();
         services.AddScoped<ISmsVerificationService, SmsVerificationService>();
-        services.AddScoped<IUserManagementService, UserManagementService>();        
+        services.AddScoped<BusinessRuleService, BusinessRuleService>();
 
         return services;
     }

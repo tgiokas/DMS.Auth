@@ -2,7 +2,6 @@
   "profiles": {
     "http": {
       "commandName": "Project",
-      "launchBrowser": false,
       "launchUrl": "authapi",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
@@ -12,7 +11,6 @@
     },
     "https": {
       "commandName": "Project",
-      "launchBrowser": false,
       "launchUrl": "authapi",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
@@ -22,23 +20,11 @@
     },
     "IIS Express": {
       "commandName": "IISExpress",
-      "launchBrowser": false,
       "launchUrl": "authapi",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
-    //"Container (Dockerfile)": {
-    //  "commandName": "Docker",
-    //  "launchBrowser": false,
-    //  "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
-    //  "environmentVariables": {
-    //    "ASPNETCORE_HTTPS_PORTS": "8070",
-    //    "ASPNETCORE_HTTP_PORTS": "8071"
-    //  },
-    //  "publishAllPorts": true,
-    //  "useSSL": true
-    //}
   },
   "iisSettings": {
     "windowsAuthentication": false,

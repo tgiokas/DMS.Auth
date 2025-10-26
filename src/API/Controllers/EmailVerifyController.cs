@@ -6,7 +6,7 @@ using Authentication.Application.Interfaces;
 namespace Authentication.Api.Controllers;
 
 [ApiController]
-[Route("api/email")]
+[Route("[controller]")]
 public class EmailVerifyController : ControllerBase
 {
     private readonly IEmailVerificationService _emailService;
@@ -16,20 +16,51 @@ public class EmailVerifyController : ControllerBase
         _emailService = emailService;
     }
 
-    [HttpPost("send-verification-email")]
-    public async Task<IActionResult> SendEmailVerification([FromBody] EmailVerificationDto request)
+    [HttpPost("send-email")]
+    public async Task<IActionResult> SendEmailVerification(EmailDto request)
     {
-        await _emailService.SendVerificationEmailAsync(request.Email);
-        return Ok(new { message = "Verification email sent" });
+        var result = await _emailService.SendVerificationLinkAsync(request.Email);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+
+        return Ok(result);
     }
 
-    [HttpGet("verify-email")]
-    public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail(EmailVerificationDto request)
     {
-        var result = await _emailService.VerifyEmailAsync(token);
-        if (!result)
-            return BadRequest(new { message = "Invalid or expired verification link" });
+        var result = await _emailService.VerifyEmailLinkAsync(request.Token);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
 
-        return Ok(new { message = "Email verified successfully" });
+        return Ok(result);
+    }
+
+    [HttpPost("send-code")]
+    public async Task<IActionResult> SendEmailCode(EmailDto request)
+    {
+        var result = await _emailService.SendVerificationCodeAsync(request.Email);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("verify-code")]
+    public async Task<IActionResult> VerifyEmailCode(EmailCodeDto request)
+    {
+        var result = await _emailService.VerifyEmailCodeAsync(request.Email, request.Code);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+
+        return Ok(result);
     }
 }

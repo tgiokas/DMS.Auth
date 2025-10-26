@@ -4,9 +4,8 @@ namespace Authentication.Application.Interfaces;
 
 public interface IAuthenticationService
 {
-    Task<LoginResult?> LoginUserAsync(string username, string password);   
-    Task<TokenDto?> RefreshTokenAsync(string refreshToken);
-    Task<bool> LogoutAsync(string refreshToken);
-    Task<string?> LoginWithGsis();
-    Task<TokenDto?> GsisCallback(string code);
+    Task<Result<LoginResponseDto>?> LoginUserAsync(string username, string password);
+    Task<Result<RefreshResponseDto>> RefreshTokenAsync(string refreshToken);
+    Task<Result<bool>> LogoutAsync(string refreshToken);
+    Task<Result<LoginResponseDto>> OAuth2CallbackAsync(string code);
 }

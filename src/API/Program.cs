@@ -1,42 +1,47 @@
-using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+using Community.Microsoft.Extensions.Caching.PostgreSql;
 using Serilog;
 
 using Authentication.Api.Middlewares;
+using Authentication.Api.Services;
 using Authentication.Application;
+using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
-
 using Authentication.Infrastructure;
-using Authentication.Infrastructure.ExternalServices;
 using Authentication.Infrastructure.Caching;
-using Authentication.Infrastructure.Services;
+using Authentication.Infrastructure.Database;
+using Authentication.Infrastructure.ExternalServices;
+using Authentication.Infrastructure.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
-//if (Log.Logger == null || Log.Logger.GetType() == typeof(LoggerConfiguration))
-//{
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(builder.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console()
-        .CreateLogger();
-//}
+// Register health check services
+builder.Services.AddHealthChecks();
 
-Log.Information("Configuring is starting...");
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+Log.Information("Configuration is starting...");
 
 builder.Host.UseSerilog();
 
 // Add memory cache
 builder.Services.AddMemoryCache();
 
-builder.Services.AddScoped<ITotpCacheService, TotpCacheService>();
-builder.Services.AddScoped<ISmsCacheService, SmsCacheService>();
-builder.Services.AddSingleton<IEmailCacheService, EmailCacheService>();
-builder.Services.AddSingleton<IPasswordForgotCacheService, ForgotPasswordCacheService>();
+builder.Services.AddScoped<ITotpCache, TotpCache>();
+builder.Services.AddScoped<IEmailCache, EmailCache>();
+builder.Services.AddScoped<ISmsCache, SmsCache>();
+builder.Services.AddScoped<IPasswordResetCache, PasswordResetCache>();
+
+builder.Services.AddHttpClient<IKeycloakClientAuthentication, KeycloakClientAuthentication>();
+builder.Services.AddHttpClient<IKeycloakClientUser, KeycloakClientUser>();
+builder.Services.AddHttpClient<IKeycloakClientRole, KeycloakClientRole>();
 
 // Add Application services
 builder.Services.AddApplicationServices();
@@ -44,24 +49,32 @@ builder.Services.AddApplicationServices();
 // Register Database Context
 builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
 
-// HttpClient for Keycloak
-builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>(client =>
+// Register Kafka-based SMS sender
+builder.Services.AddSingleton<ISmsSender, KafkaSmsSender>();
+
+// Register Kafka-based Email sender
+builder.Services.AddSingleton<IEmailSender, KafkaEmailSender>();
+
+builder.Services.AddSingleton<IMessagePublisher, KafkaPublisher>();
+
+builder.Services.AddDistributedPostgreSqlCache(options =>
 {
-    var baseUrl = builder.Configuration["Keycloak:BaseUrl"];
-    if (string.IsNullOrEmpty(baseUrl))
-    {
-        throw new ArgumentNullException("Keycloak:BaseUrl", "Keycloak BaseUrl configuration is missing or empty.");
-    }
-    client.BaseAddress = new Uri(baseUrl);
+    options.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.SchemaName = "public";
+    options.TableName = "CacheEntries";
 });
 
-builder.Services.AddHttpClient<ISmsSender, SmsSenderService>();
-builder.Services.AddHttpClient<IEmailSender, EmailSenderService>();
-builder.Services.AddHttpClient<IKeycloakClient, KeycloakClient>();
+builder.Services.AddSingleton<KeycloakRoleMapper>();
+
+// ---------- Error Catalog Path ----------
+var path = Path.Combine(builder.Environment.ContentRootPath, "errors.json");
+if (!File.Exists(path))
+    throw new FileNotFoundException($"errors.json not found at: {path}");
+Log.Information("Using error catalog at: {Path}", path);
+var errorcat = ErrorCatalog.LoadFromFile(path);
+builder.Services.AddSingleton<IErrorCatalog>(errorcat);
 
 builder.Services.AddControllers();
-
-//builder.Services.AddEndpointsApiExplorer();
 
 // Configure Authentication & Keycloak JWT Bearer
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -69,13 +82,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = builder.Configuration["Keycloak:Authority"];
         options.Audience = builder.Configuration["Keycloak:ClientId"];
-        options.RequireHttpsMetadata = false; // Only for local dev
+        options.RequireHttpsMetadata = bool.Parse(builder.Configuration["Keycloak:RequireHttpsMetadata"] ?? "false");
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidIssuer = builder.Configuration["Keycloak:Authority"],            
             ValidateAudience = true,
-            ValidAudiences = new[] { "dms-auth-app"}, 
+            ValidAudiences = [builder.Configuration["Keycloak:ClientId"]],
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
@@ -88,92 +101,56 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnTokenValidated = context =>
             {
-                MapKeycloakRolesToRoleClaims(context);
+                var roleMapper = context.HttpContext.RequestServices.GetRequiredService<KeycloakRoleMapper>();
+                roleMapper.MapRolesToClaims(context);
                 return Task.CompletedTask;
             }
         };
 
     });
 
-//Role-Based Access Control (RBAC) policies with role claim mapping
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("AdminOnly", policy => policy.RequireRole("admin"))
-    .AddPolicy("UserOnly", policy => policy.RequireRole("user"))
-    .AddPolicy("AdminOrUser", policy => policy.RequireRole("admin", "user"));
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy", policyBuilder =>
+    {
+        policyBuilder.AllowAnyOrigin();
+        policyBuilder.AllowAnyMethod();
+        policyBuilder.AllowAnyHeader();
+    });
+});
+
+// builder.WebHost.UseUrls("http://0.0.0.0:80");
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+}
 
 var app = builder.Build();
+
+// Expose a simple health endpoint at /health
+app.MapHealthChecks("/health");
 
 Log.Information("Application is starting...");
 
 if (app.Environment.IsDevelopment())
 {
-    //app.UseSwagger();
-    //app.UseSwaggerUI();
-    //using var scope = app.Services.CreateScope();
-    //var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    //dbContext.Database.Migrate();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-app.UseMiddleware<LogMiddleware>(); // Enable Serilog logging for API requests
+using var scope = app.Services.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+dbContext.Database.Migrate();
+Log.Information("Database migrations applied (if any).");
 
+app.UseCors("CorsPolicy");
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<LogMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
-void MapKeycloakRolesToRoleClaims(TokenValidatedContext context)
-{
-    var user = context.Principal;
-    var identity = user?.Identity as ClaimsIdentity;
-
-    var realmAccessClaim = identity?.FindFirst("realm_access");
-    if (realmAccessClaim == null)
-    {
-        Console.WriteLine("realm_access claim not found in token.");
-        return;
-    }
-
-    try
-    {
-        using var doc = JsonDocument.Parse(realmAccessClaim.Value);
-        if (doc.RootElement.TryGetProperty("roles", out var roles))
-        {
-            Console.WriteLine("Extracted Roles from Token:");
-            foreach (var role in roles.EnumerateArray())
-            {
-                string? roleValue = role.GetString()?.ToLower();
-                if (roleValue != null)
-                {
-                    identity?.AddClaim(new Claim(ClaimTypes.Role, roleValue));
-                    Console.WriteLine($" - {roleValue}");
-                }
-            }
-        }
-        else
-        {
-            Console.WriteLine("No roles found in realm_access");
-        }
-    }
-    catch (JsonException ex)
-    {
-        Console.WriteLine($"Failed to parse realm_access: {ex.Message}");
-    }
-}
-
-//void MapKeycloakRolesToRoleClaims2(TokenValidatedContext context)
-//{
-//    //var resourceAccess = JObject.Parse(context.Principal.FindFirst("resource_access").Value);
-//    //var clientResource = resourceAccess[context.Principal.FindFirstValue("aud")];
-//    var clientRoles = context.Principal.Claims.Where(w => w.Type == "user_realm_roles").ToList();
-//    var claimsIdentity = context.Principal.Identity as ClaimsIdentity;
-//    if (claimsIdentity == null)
-//    {
-//        return;
-//    }
-
-//    foreach (var clientRole in clientRoles)
-//    {
-//        claimsIdentity.AddClaim(new Claim(ClaimTypes.Role, clientRole.Value));
-//    }
-//}

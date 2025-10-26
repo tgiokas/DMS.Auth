@@ -1,8 +1,13 @@
-﻿namespace Authentication.Domain.Interfaces;
+﻿using Authentication.Domain.Entities;
+
+namespace Authentication.Domain.Interfaces;
 
 public interface ITotpRepository
 {
-    Task AddAsync(string userId, string base32Secret);
-    Task<string?> GetAsync(string userId);
-    Task<bool> ExistsAsync(string userId);
+    Task<string?> GetAsync(Guid keycloakUserId);
+    Task<UserTotpSecret?> GetByUserIdAsync(Guid keycloakUserId);
+    Task<bool> ExistsAsync(Guid keycloakUserId);
+    Task AddAsync(UserTotpSecret userTotpSecret);
+    Task UpdateAsync(UserTotpSecret userTotpSecret);
+    Task DeleteAsync(Guid keycloakUserId);
 }

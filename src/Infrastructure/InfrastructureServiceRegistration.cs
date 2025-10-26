@@ -26,11 +26,11 @@ public static class InfrastructureServiceRegistration
                     break;
 
                 case "postgresql":
-                    options.UseNpgsql(connectionString);
+                    options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention();
                     break;
 
                 case "sqlite":
-                    options.UseSqlite(connectionString);                   
+                    //options.UseSqlite(connectionString);                   
                     break;
 
                 default:
@@ -38,10 +38,9 @@ public static class InfrastructureServiceRegistration
             }
         });
 
-        //services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<ITotpRepository, TotpSecretRepository>();
+        services.AddScoped<ITotpRepository, TotpRepository>();
+        services.AddScoped<IBusinessRuleRepository, BusinessRuleRepository>();
 
         return services;
     }

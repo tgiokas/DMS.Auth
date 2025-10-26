@@ -17,131 +17,186 @@ namespace Authentication.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("ProductVersion", "8.0.20")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Authentication.Domain.Entities.Permission", b =>
+            modelBuilder.Entity("Authentication.Domain.Entities.BusinessRule", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    b.Property<string>("Name")
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Allowed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allowed");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DepartmentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("department_id");
+
+                    b.Property<string>("HttpMethod")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("http_method");
 
-                    b.Property<Guid?>("RoleId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("KeycloakRoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("keycloak_role_id");
 
-                    b.HasKey("Id");
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
 
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("Permission");
-                });
-
-            modelBuilder.Entity("Authentication.Domain.Entities.Role", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
+                    b.Property<string>("PathPattern")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("path_pattern");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_business_rules");
 
-                    b.ToTable("Roles");
+                    b.HasIndex("DepartmentId", "KeycloakRoleId", "HttpMethod")
+                        .HasDatabaseName("ix_business_rules_department_id_keycloak_role_id_http_method");
+
+                    b.ToTable("BusinessRules", (string)null);
                 });
 
             modelBuilder.Entity("Authentication.Domain.Entities.User", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("email");
 
                     b.Property<bool>("EmailVerified")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_verified");
 
-                    b.Property<bool>("IsMfaEnabled")
-                        .HasColumnType("boolean");
+                    b.Property<string>("FirstName")
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
 
-                    b.Property<string>("KeycloakUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<bool>("IsAdmin")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_admin");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_enabled");
+
+                    b.Property<Guid>("KeycloakUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("keycloak_user_id");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
+
+                    b.Property<int>("MfaType")
+                        .HasColumnType("integer")
+                        .HasColumnName("mfa_type");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
 
                     b.Property<string>("PhoneNumber")
-                        .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
 
                     b.Property<bool>("PhoneVerified")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("phone_verified");
 
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("username");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_users");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_email");
+
+                    b.HasIndex("KeycloakUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_keycloak_user_id");
+
+                    b.HasIndex("Username")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_username");
 
                     b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Authentication.Domain.Entities.UserTotpSecret", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Base32Secret")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("base32secret");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
 
-                    b.Property<DateTime>("LastVerifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<Guid>("KeycloakUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("keycloak_user_id");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<DateTime?>("LastVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_verified_at");
 
                     b.Property<bool>("Verified")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("verified");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_totp_secrets");
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("KeycloakUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_totp_secrets_keycloak_user_id");
 
                     b.ToTable("UserTotpSecrets", (string)null);
-                });
-
-            modelBuilder.Entity("Authentication.Domain.Entities.Permission", b =>
-                {
-                    b.HasOne("Authentication.Domain.Entities.Role", null)
-                        .WithMany("Permissions")
-                        .HasForeignKey("RoleId");
-                });
-
-            modelBuilder.Entity("Authentication.Domain.Entities.Role", b =>
-                {
-                    b.Navigation("Permissions");
                 });
 #pragma warning restore 612, 618
         }

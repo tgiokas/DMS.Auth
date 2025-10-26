@@ -6,7 +6,7 @@ using Authentication.Application.Interfaces;
 namespace Authentication.Api.Controllers;
 
 [ApiController]
-[Route("api/sms")]
+[Route("[controller]")]
 public class SmsVerifyController : ControllerBase
 {
     private readonly ISmsVerificationService _smsService;
@@ -16,19 +16,26 @@ public class SmsVerifyController : ControllerBase
         _smsService = smsVerificationService;
     }
 
-    [HttpPost("send-verification-sms")]
-    public async Task<IActionResult> SendVerificationSms([FromBody] SmsSendDto request)
+    [HttpPost("send-sms")]
+    public async Task<IActionResult> SendVerificationSms(SmsSendDto request)
     {
-        await _smsService.SendVerificationSmsAsync(request.PhoneNumber);
-        return Ok(new { message = "Verification SMS sent" });
+        var result = await _smsService.SendVerificationSmsAsync(request.PhoneNumber);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+
+        return Ok(result);
     }
 
     [HttpPost("verify-sms")]
-    public async Task<IActionResult> VerifySmsCode([FromBody] SmsVerifyCodeDto request)
+    public async Task<IActionResult> VerifySmsCode(SmsVerifyDto request)
     {
-        var isValid = await _smsService.VerifySmsAsync(request.PhoneNumber, request.Code);
-        if (!isValid)
-            return BadRequest(new { message = "Invalid or expired code" });
+        var result = await _smsService.VerifySmsAsync(request.PhoneNumber, request.Code);
+        if (result.Success)
+        {
+            return Accepted(result);
+        }
         
         return Ok(new { message = "Phone number verified successfully" });
     }

@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 using Authentication.Application.Dtos;
 using Authentication.Application.Interfaces;
@@ -7,7 +6,7 @@ using Authentication.Application.Interfaces;
 namespace Authentication.Api.Controllers;
 
 [ApiController]
-[Route("api/user")]
+[Route("[controller]")]
 public class UserController : ControllerBase
 {
     private readonly IUserManagementService _userManagementService;
@@ -15,76 +14,149 @@ public class UserController : ControllerBase
     public UserController(IUserManagementService userManagementService)
     {
         _userManagementService = userManagementService;
-    }      
-    
-    [HttpGet("users")]
-    //[Authorize(Policy = "AdminOnly")]
-    public async Task<IActionResult> GetUsers()
-    {
-        var response = await _userManagementService.GetUsersAsync();
-        if (response == null)
-        {
-            return BadRequest(new { message = "Failed to get Users" });
-        }
-        return Ok(response);
     }
 
-    [HttpGet("profile")]
-    [Authorize(Roles = "admin")]
-    public async Task<IActionResult> GetUserProfile(string username)
+    [HttpPost("getusers")]
+    public async Task<IActionResult> GetUsers(UserQueryParams queryParams)
     {
-        var response = await _userManagementService.GetUserProfile(username);
-        if (response == null)
+        var result = await _userManagementService.GetUsersAsync(queryParams);
+        if (!result.Success)
         {
-            return BadRequest(new { message = "Failed to get User" });
+            return Accepted(result);
         }
-        return Ok(response);
+        return Ok(result);
+    }
+
+    [HttpPost("getbyname")]
+    public async Task<IActionResult> GetUserByName(UserNameDto request)
+    {
+        var result = await _userManagementService.GetUserProfileByName(request.Username);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("getbyid")]
+    public async Task<IActionResult> GetUserById(IdDto request)
+    {
+        var result = await _userManagementService.GetUserProfileById(request.Id);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("getbyids")]
+    public async Task<IActionResult> GetUserByIds(List<IdDto> request)
+    {
+        var result = await _userManagementService.GetUserProfilesByIds(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
     }
 
     [HttpPost("create")]
-    public async Task<IActionResult> CreateUser([FromBody] UserCreateDto request)
-    {        
-        var response = await _userManagementService.CreateUserAsync(request);
-        if (!response)
+    public async Task<IActionResult> CreateUser(UserCreateDto request)
+    {
+        var result = await _userManagementService.CreateUserAsync(request);
+        if (!result.Success)
         {
-            return BadRequest(new { message = "Failed to create user" });
+            return Accepted(result);
         }
-        return Ok(new { message = "User created successfully" });
+        return Ok(result);
     }
 
-    [HttpPut("update/{username}")]
-    [Authorize(Roles = "admin")]
-    public async Task<IActionResult> UpdateUser([FromBody] UserUpdateDto request)
+    [HttpPost("create-with-role")]
+    public async Task<IActionResult> CreateUserWithRole(UserCreateWithRolesDto request)
     {
-        var response = await _userManagementService.UpdateUserAsync(request);
-        if (!response)
+        var result = await _userManagementService.CreateUserWithRolesAsync(request.User, request.Roles);
+        if (!result.Success)
         {
-            return BadRequest(new { message = "Failed to update user" });
+            return Accepted(result);
         }
-        return Ok(new { message = "User updated successfully" });
+        return Ok(result);
     }
 
-    [HttpDelete("delete/{username}")]
-    [Authorize(Roles = "admin")]
-    public async Task<IActionResult> DeleteUser(string username)
+    [HttpPost("create-register")]
+    public async Task<IActionResult> CreateAndSendEmail(UserCreateDto request)
     {
-        var response = await _userManagementService.DeleteUserAsync(username);
-        if (!response)
+        var result = await _userManagementService.CreateUserAndSendEmailAsync(request);
+        if (!result.Success)
         {
-            return BadRequest(new { message = "Failed to delete user" });
+            return Accepted(result);
         }
-        return Ok(new { message = "User deleted successfully" });
+        return Ok(result);
     }
 
-    [HttpGet("roles/{username}")]
-    [Authorize(Roles = "admin")]
-    public async Task<IActionResult> GetUserRoles(string username)
+    [HttpPost("verify")]
+    public async Task<IActionResult> ResetPasswordAndVerifyEmailAsync(PasswordResetDto request)
     {
-        var response = await _userManagementService.GetUserRolesAsync(username);
-        if (response == null)
+        var result = await _userManagementService.ResetPasswordAndVerifyEmailAsync(request);
+        if (!result.Success)
         {
-            return BadRequest(new { message = "Failed to get Roles" });
+            return Accepted(result);
         }
-        return Ok(response);
+        return Ok(result);
+    }
+
+    [HttpPost("update")]
+    public async Task<IActionResult> UpdateUser(UserUpdateDto request)
+    {
+        var result = await _userManagementService.UpdateUserAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("delete")]
+    public async Task<IActionResult> DeleteUser(IdDto request)
+    {
+        var result = await _userManagementService.DeleteUserAsync(request.Id);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("attributes")]
+    public async Task<IActionResult> GetUserAttributes(List<UserIdDto> request)
+    {
+        var userIds = request.Select(r => r.UserId).ToList();
+        var result = await _userManagementService.GetUsersAttributesAsync(userIds);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("attributes/set")]
+    public async Task<IActionResult> SetUserAttribute(UserAttributeDto request)
+    {
+        var result = await _userManagementService.SetUserAttributeAsync(request.UserId, request.Key, request.Value);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("attributes/delete")]
+    public async Task<IActionResult> DeleteUserAttribute(UserAttributeDto request)
+    {
+        var result = await _userManagementService.DeleteUserAttributeAsync(request.UserId, request.Key);
+        if (!result.Success)
+        {
+            return Accepted(result);             
+        }
+        return Ok(result);
     }
 }

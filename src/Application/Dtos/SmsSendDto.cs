@@ -2,5 +2,5 @@
 
 public class SmsSendDto
 {
-    public string PhoneNumber { get; set; } = default!;
+    public string PhoneNumber { get; set; } = string.Empty;
 }
