@@ -78,12 +78,12 @@ public class RoleManagementService : IRoleManagementService
 
     public async Task<Result<List<RoleProfileDto>>> GetUserRolesAsync(string username)
     {
-        var userId = await _keycloakClientUser.GetUserIdByUsernameAsync(username);
-        if (userId == null)
+        var user = await _keycloakClientUser.GetUserByNameAsync(username);
+        if (user == null)
         {
             return _errors.Fail<List<RoleProfileDto>>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
         }
-        var userRoles = await _keycloakClientRole.GetUserRolesAsync(userId);
+        var userRoles = await _keycloakClientRole.GetUserRolesAsync(user.Id);
         if (userRoles == null)
         {
             return _errors.Fail<List<RoleProfileDto>>(ErrorCodes.AUTH.UserRolesNotFound);
@@ -99,29 +99,36 @@ public class RoleManagementService : IRoleManagementService
         return Result<List<RoleProfileDto>>.Ok(roleDtos);
     }
 
-    public async Task<Result<RoleDto>> CreateRoleAsync(RoleDto roleDto)
+    public async Task<Result<RoleProfileDto>> CreateRoleAsync(RoleDto roleDto)
     {
         // Check if role exists
         var role = await _keycloakClientRole.GetRoleByNameAsync(roleDto.RoleName);
         if (role != null)
         {
-            return _errors.Fail<RoleDto>(ErrorCodes.AUTH.RoleAlreadyExists);
+            return _errors.Fail<RoleProfileDto>(ErrorCodes.AUTH.RoleAlreadyExists);
         }
 
         // Create Role in Keycloak
         var keycloakRole = await _keycloakClientRole.CreateRoleAsync(roleDto.RoleName, roleDto.Description ?? string.Empty);
         if (keycloakRole == null)
         {
-            return _errors.Fail<RoleDto>(ErrorCodes.AUTH.CreateRoleFailed);
+            return _errors.Fail<RoleProfileDto>(ErrorCodes.AUTH.CreateRoleFailed);
         }
 
-        var createdRoleDto = new RoleDto
+        var newRole = await _keycloakClientRole.GetRoleByNameAsync(roleDto.RoleName);
+        if (newRole == null)
         {
-            RoleName = keycloakRole.Name,
-            Description = keycloakRole.Description
+            return _errors.Fail<RoleProfileDto>(ErrorCodes.AUTH.CreateRoleFailed);
+        }
+
+        var createdRoleDto = new RoleProfileDto
+        {
+            Id = newRole.Id,
+            RoleName = newRole.Name,
+            Description = newRole.Description
         };
 
-        return Result<RoleDto>.Ok(createdRoleDto, $"Role {roleDto.RoleName} created successfully");
+        return Result<RoleProfileDto>.Ok(createdRoleDto, $"Role {roleDto.RoleName} created successfully");
     }
 
     public async Task<Result<RoleProfileDto>> UpdateRoleAsync(RoleUpdateDto roleDto)
@@ -148,25 +155,39 @@ public class RoleManagementService : IRoleManagementService
         };
 
         return Result<RoleProfileDto>.Ok(updatedRoleDto, $"Role {roleDto.RoleName} updated successfully");
-    }
+    }       
 
-    public async Task<Result<bool>> DeleteRoleAsync(string rolename)
+    public async Task<Result<bool>> DeleteRoleAsync(List<RoleDto> rolesToDelete)
     {
-        // Check if role exists
-        var role = await _keycloakClientRole.GetRoleByNameAsync(rolename);
-        if (role == null)
+        if (rolesToDelete == null || rolesToDelete.Count == 0)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.RolesNotFound);
+        }
+
+        var failedRoles = new List<string>();
+
+        foreach (var roleDto in rolesToDelete)
+        {
+            var role = await _keycloakClientRole.GetRoleByNameAsync(roleDto.RoleName);
+            if (role == null)
+            {
+                failedRoles.Add(roleDto.RoleName);
+                continue;
+            }
+
+            var result = await _keycloakClientRole.DeleteRoleAsync(roleDto.RoleName);
+            if (!result)
+            {
+                return _errors.Fail<bool>(ErrorCodes.AUTH.DeleteRoleFailed);
+            }
+        }
+
+        if (failedRoles.Count > 0)
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.RoleNotFound);
         }
 
-        // Delete role from Keycloak
-        var result = await _keycloakClientRole.DeleteRoleAsync(rolename);
-        if (!result)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.DeleteRoleFailed);
-        }
-
-        return Result<bool>.Ok(data: true, message: $"Role {rolename} deleted successfully.");
+        return Result<bool>.Ok(data: true, message: "Roles deleted successfully.");
     }
 
     public async Task<Result<bool>> AssignRolesToUserAsync(string username, List<RoleDto> rolesToAssign)

@@ -1,29 +1,40 @@
-﻿using Authentication.Application.Dtos;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
+using Authentication.Domain.Enums;
 
 namespace Authentication.Application.Services;
 
 public class EmailVerificationService : IEmailVerificationService
-{
-    private readonly IUserManagementService _userService;
+{   
     private readonly IKeycloakClientUser _keycloakClientUser;
     private readonly IEmailSender _emailSender;
-    private readonly IEmailCache _emailCache;                            
+    private readonly IEmailCache _emailCache;
+    private readonly IConfiguration _configuration;
     private readonly IErrorCatalog _errors;
+    private readonly ILogger<EmailVerificationService> _logger;
+    private readonly string _verificationUrl;
 
-    public EmailVerificationService(
-        IUserManagementService userService,
+    public EmailVerificationService(       
         IKeycloakClientUser keycloakClientUser,
         IEmailSender emailSender,
-        IEmailCache cache,        
-        IErrorCatalog errors)
-    {
-        _userService = userService;
+        IEmailCache cache,
+        IConfiguration configuration,
+        IErrorCatalog errors,
+        ILogger<EmailVerificationService> logger
+        )
+    {        
         _keycloakClientUser = keycloakClientUser;
         _emailSender = emailSender;
-        _emailCache = cache;        
+        _emailCache = cache;
+        _configuration = configuration;
         _errors = errors;
+        _logger = logger;
+
+        _verificationUrl = _configuration["VERIFICATION_URL"] ?? throw new ArgumentNullException(nameof(configuration), "VERIFICATION_URL is empty.");
     }
 
     public async Task<Result<bool>> SendVerificationLinkAsync(string email)
@@ -37,13 +48,26 @@ public class EmailVerificationService : IEmailVerificationService
         var token = GenerateToken();
         await _emailCache.StoreTokenAsync(token, email);
 
-        var verifyUrl = $"https://your-frontend.com/auth/verify-email?token={token}";       
+        var verifyUrl = $"{_verificationUrl}?token={token}";
         var subject = $"Verification email for {email}";
-        var message = $"Click the link to verify your email: {verifyUrl}";
-        
+        var message = $"Click the link to verify your email: {verifyUrl}";       
+
+        var emailMessageDto = new NotificationEmailDto
+        {
+            Recipient = email,
+            Subject = subject,
+            Message = message,
+            Type = EmailTemplateType.VerificationLink,
+            TemplateParams = new Dictionary<string, string>
+            {
+                ["Username"] = email,
+                ["VerificationLink"] = verifyUrl
+            }
+        };
+
         try
         {
-            var sent = await _emailSender.SendVerificationEmailAsync(email, subject, message);
+            var sent = await _emailSender.SendEmailAsync(emailMessageDto);
             if (sent)
             {                
                 return Result<bool>.Ok(data: true, message: "Email verification sent.");
@@ -65,15 +89,15 @@ public class EmailVerificationService : IEmailVerificationService
         if (string.IsNullOrWhiteSpace(email))
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.VerifyEmailTokenInValid);
-        }                    
-
-        var result = await _userService.EmailVerifiedAsync(email);
-        if (!result.Success)
-        {
-            return _errors.Fail<bool>(result.ErrorCode!);
         }
 
         await _emailCache.RemoveTokenAsync(token);
+
+        var result = await EmailVerifiedAsync(email);
+        if (!result.Success)
+        {
+            return _errors.Fail<bool>(result.ErrorCode!);
+        }      
 
         return Result<bool>.Ok(data:true, message: "Email verified.");
     }
@@ -92,9 +116,22 @@ public class EmailVerificationService : IEmailVerificationService
         var subject = $"Email Verification Code for {email}";
         var message = $"Your verification code is: {code}";
 
+        var emailMessageDto = new NotificationEmailDto
+        {
+            Recipient = email,
+            Subject = subject,
+            Message = message,
+            Type = EmailTemplateType.VerificationCode,
+            TemplateParams = new Dictionary<string, string>
+            {
+                ["Username"] = email,
+                ["VerificationCode"] = code
+            },           
+        };
+
         try
         {
-            var sent = await _emailSender.SendVerificationEmailAsync(email, subject, message);
+            var sent = await _emailSender.SendEmailAsync(emailMessageDto);
             if (sent)
             {
                 return Result<bool>.Ok(true, "Verification code sent successfully.");
@@ -126,7 +163,7 @@ public class EmailVerificationService : IEmailVerificationService
 
         await _emailCache.RemoveCodeAsync(email);
 
-        var result = await _userService.EmailVerifiedAsync(email);
+        var result = await EmailVerifiedAsync(email);
         if (!result.Success)
         {
             return _errors.Fail<bool>(result.ErrorCode!);
@@ -134,7 +171,7 @@ public class EmailVerificationService : IEmailVerificationService
 
         return Result<bool>.Ok(true, "Email verified successfully.");
     }
-
+    
     public async Task<Result<bool>> SendMfaCodeAsync(string email)
     {
         var user = await _keycloakClientUser.GetUserByEmailAsync(email);
@@ -149,9 +186,22 @@ public class EmailVerificationService : IEmailVerificationService
         var subject = $"MFA email for {email}";
         var message = $"Your mfa code is: {code}";
 
+        var emailMessageDto = new NotificationEmailDto
+        {
+            Recipient = email,
+            Subject = subject,
+            Message = message,
+            Type = EmailTemplateType.MfaCode,
+            TemplateParams = new Dictionary<string, string>
+            {
+                ["Username"] = email,
+                ["MfaCode"] = code
+            },
+        };
+
         try
         {
-            var sent = await _emailSender.SendVerificationEmailAsync(email, subject, message);
+            var sent = await _emailSender.SendEmailAsync(emailMessageDto);
             if (sent)
             {               
                 return Result<bool>.Ok(data: true, message: "Mfa email sent");
@@ -166,20 +216,49 @@ public class EmailVerificationService : IEmailVerificationService
             return _errors.Fail<bool>(ErrorCodes.AUTH.EmailMfaSendFailed);
         }
     }
-    
+
     public async Task<Result<bool>> VerifyMfaCodeAsync(string email, string code)
     {
         var cachedCode = await _emailCache.GetCodeAsync(email);
+        if (string.IsNullOrWhiteSpace(cachedCode))
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.VerifyEmailTokenInValid);
+        }
         var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
 
+        _logger.LogInformation("Is code Valid: {isValid}", isValid);
+
         if (!isValid)
-         {
+        {            
             return _errors.Fail<bool>(ErrorCodes.AUTH.InvalidEmailCode);
-        }
+        }        
 
         await _emailCache.RemoveCodeAsync(email);
 
         return Result<bool>.Ok(data: true, message: "Mfa Email verified.");
+    }
+
+    private async Task<Result<bool>> EmailVerifiedAsync(string email)
+    {
+        var keycloakUser = await _keycloakClientUser.GetUserByEmailAsync(email);
+        if (keycloakUser == null)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
+        }
+
+        var updateDto = new KeycloakUserDto
+        {
+            Id = keycloakUser.Id,
+            EmailVerified = true,
+        };
+
+        var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
+        if (!keycloakUpdateResult.Success)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UpdateInKeycloakFailed);
+        }       
+
+        return Result<bool>.Ok(data: true, message: "Email Verified.");
     }
 
     private static string GenerateToken()

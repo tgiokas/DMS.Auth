@@ -1,30 +1,35 @@
-﻿using Authentication.Application.Dtos;
+﻿using Microsoft.Extensions.Configuration;
+
+using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
-using Authentication.Domain.Interfaces;
+using Authentication.Domain.Enums;
 
 namespace Authentication.Application.Services;
 
 public class PasswordResetService : IPasswordResetService
 {
     private readonly IKeycloakClientUser _keycloakClientUser;
-    private readonly IEmailSender _emailSender;
-    private readonly IUserRepository _userRepository;
+    private readonly IEmailSender _emailSender;    
     private readonly IPasswordResetCache _passwordResetCache;
+    private readonly IConfiguration _configuration;
     private readonly IErrorCatalog _errors;
+    private readonly string _passwordResetUrl;
 
     public PasswordResetService(
-        IKeycloakClientUser keycloakClient,       
+        IKeycloakClientUser keycloakClient,
         IEmailSender emailSender,
-        IUserRepository userRepository,
         IPasswordResetCache cache,
+        IConfiguration configuration,
         IErrorCatalog errors)
     {
-        _keycloakClientUser = keycloakClient;        
+        _keycloakClientUser = keycloakClient;
         _emailSender = emailSender;
-        _userRepository = userRepository;
         _passwordResetCache = cache;
+        _configuration = configuration;
         _errors = errors;
+
+        _passwordResetUrl = _configuration["PASSWORD_RESET_URL"] ?? throw new ArgumentNullException(nameof(configuration), "PASSWORD_RESET_URL is empty.");
     }
 
     public async Task<Result<bool>> SendResetLinkAsync(string email)
@@ -42,13 +47,26 @@ public class PasswordResetService : IPasswordResetService
             UserId = user.Id
         });
 
-        var resetUrl = $"https://yourapp.com/auth/reset-password?token={token}";
-        var message = $"Click the link to reset your password: {resetUrl}";
+        var resetUrl = $"{_passwordResetUrl}?token={token}";
         var subject = $"Reset Password for {email}";
+        var message = $"Click the link to reset your password: {resetUrl}";       
+
+        var emailMessageDto = new NotificationEmailDto
+        {
+            Recipient = email,
+            Subject = subject,
+            Message = message,
+            Type = EmailTemplateType.PasswordReset,            
+            TemplateParams = new Dictionary<string, string>
+            {
+                ["Username"] = email,
+                ["PasswordResetLink"] = resetUrl
+            }
+        };
 
         try
         {
-            var sent = await _emailSender.SendVerificationEmailAsync(email, subject, message);
+            var sent = await _emailSender.SendEmailAsync(emailMessageDto);
             if (sent)
             {
                 return Result<bool>.Ok(data: true, message: "Email for password reset sent.");
@@ -62,28 +80,9 @@ public class PasswordResetService : IPasswordResetService
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.EmailVerificationSendFailed);
         }
-    }
+    }    
 
     public async Task<Result<bool>> ResetPasswordAsync(string token, string newPassword)
-    {
-        var cachedEntry = await _passwordResetCache.GetTokenAsync(token);
-        if (cachedEntry == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.PasswordResetTokenInvalid);
-        }
-
-        var result = await _keycloakClientUser.UpdateUserPasswordAsync(cachedEntry.UserId, newPassword, false);
-        if (!result)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UpdatePasswordFailed);
-        }
-
-        await _passwordResetCache.RemoveTokenAsync(token);
-
-        return Result<bool>.Ok(data: true, message: "Password reset successful.");
-    }
-
-    public async Task<Result<bool>> ResetPasswordAndVerifyEmailAsync(string token, string newPassword)
     {
         var cachedEntry = await _passwordResetCache.GetTokenAsync(token);
         if (cachedEntry == null)
@@ -102,25 +101,14 @@ public class PasswordResetService : IPasswordResetService
         var updateDto = new KeycloakUserDto
         {
             Id = cachedEntry.UserId,
-            EmailVerified = true,
-            Enabled = true
+            EmailVerified = true            
         };
 
         var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
         if (!keycloakUpdateResult.Success)
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.UpdateInKeycloakFailed);
-        }
-
-        var dbUser = await _userRepository.GetByEmailAsync(cachedEntry.Email);
-        if (dbUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
-        }
-
-        dbUser.EmailVerified = true;
-        dbUser.IsEnabled = true;
-        await _userRepository.UpdateAsync(dbUser);        
+        }        
 
         return Result<bool>.Ok(data: true, message: "Email verified & Password reset.");
     }

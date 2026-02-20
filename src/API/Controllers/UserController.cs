@@ -30,7 +30,7 @@ public class UserController : ControllerBase
     [HttpPost("getbyname")]
     public async Task<IActionResult> GetUserByName(UserNameDto request)
     {
-        var result = await _userManagementService.GetUserProfileByName(request.Username);
+        var result = await _userManagementService.GetUserByNameAsync(request.Username);
         if (!result.Success)
         {
             return Accepted(result);
@@ -41,7 +41,7 @@ public class UserController : ControllerBase
     [HttpPost("getbyid")]
     public async Task<IActionResult> GetUserById(IdDto request)
     {
-        var result = await _userManagementService.GetUserProfileById(request.Id);
+        var result = await _userManagementService.GetUserByIdAsync(request.Id);
         if (!result.Success)
         {
             return Accepted(result);
@@ -50,9 +50,9 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("getbyids")]
-    public async Task<IActionResult> GetUserByIds(List<IdDto> request)
+    public async Task<IActionResult> GetUsersByIds(List<IdDto> request)
     {
-        var result = await _userManagementService.GetUserProfilesByIds(request);
+        var result = await _userManagementService.GetUsersByIdsAsync(request);
         if (!result.Success)
         {
             return Accepted(result);
@@ -64,39 +64,6 @@ public class UserController : ControllerBase
     public async Task<IActionResult> CreateUser(UserCreateDto request)
     {
         var result = await _userManagementService.CreateUserAsync(request);
-        if (!result.Success)
-        {
-            return Accepted(result);
-        }
-        return Ok(result);
-    }
-
-    [HttpPost("create-with-role")]
-    public async Task<IActionResult> CreateUserWithRole(UserCreateWithRolesDto request)
-    {
-        var result = await _userManagementService.CreateUserWithRolesAsync(request.User, request.Roles);
-        if (!result.Success)
-        {
-            return Accepted(result);
-        }
-        return Ok(result);
-    }
-
-    [HttpPost("create-register")]
-    public async Task<IActionResult> CreateAndSendEmail(UserCreateDto request)
-    {
-        var result = await _userManagementService.CreateUserAndSendEmailAsync(request);
-        if (!result.Success)
-        {
-            return Accepted(result);
-        }
-        return Ok(result);
-    }
-
-    [HttpPost("verify")]
-    public async Task<IActionResult> ResetPasswordAndVerifyEmailAsync(PasswordResetDto request)
-    {
-        var result = await _userManagementService.ResetPasswordAndVerifyEmailAsync(request);
         if (!result.Success)
         {
             return Accepted(result);
@@ -116,9 +83,42 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("delete")]
-    public async Task<IActionResult> DeleteUser(IdDto request)
+    public async Task<IActionResult> DeleteUser(List<IdDto> request)
     {
-        var result = await _userManagementService.DeleteUserAsync(request.Id);
+        var result = await _userManagementService.DeleteUsersAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("fakedelete")]
+    public async Task<IActionResult> FakeDeleteUsers(List<IdDto> request)
+    {
+        var result = await _userManagementService.FakeDeleteUsersAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("enable")]
+    public async Task<IActionResult> EnableUsers(List<IdDto> request)
+    {
+        var result = await _userManagementService.EnableUsersAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("disable")]
+    public async Task<IActionResult> DisableUsers(List<IdDto> request)
+    {
+        var result = await _userManagementService.DisableUsersAsync(request);
         if (!result.Success)
         {
             return Accepted(result);
@@ -128,9 +128,8 @@ public class UserController : ControllerBase
 
     [HttpPost("attributes")]
     public async Task<IActionResult> GetUserAttributes(List<UserIdDto> request)
-    {
-        var userIds = request.Select(r => r.UserId).ToList();
-        var result = await _userManagementService.GetUsersAttributesAsync(userIds);
+    {        
+        var result = await _userManagementService.GetUsersAttributesAsync(request);
         if (!result.Success)
         {
             return Accepted(result);

@@ -4,8 +4,7 @@ namespace Authentication.Application.Interfaces;
 
 public interface IKeycloakClientUser
 {     
-    Task<List<KeycloakUser>?> GetUsersAsync();
-    Task<string?> GetUserIdByUsernameAsync(string username);    
+    Task<List<KeycloakUser>?> GetUsersAsync(string queryString);
     Task<KeycloakUser?> GetUserByNameAsync(string username);
     Task<KeycloakUser?> GetUserByIdAsync(string userId);
     Task<KeycloakUser?> GetUserByEmailAsync(string email);

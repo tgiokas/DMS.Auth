@@ -1,41 +1,56 @@
-﻿using Authentication.Application.Interfaces;
-using Authentication.Application.Dtos;
+﻿using Microsoft.Extensions.Caching.Distributed;
+
+using Authentication.Application.Interfaces;
 using Authentication.Domain.Interfaces;
 
 namespace Authentication.Application.Services;
 
 public class AuthorizationService : IAuthorizationService
 {
-    private readonly IBusinessRuleRepository _ruleRepo;
+    private readonly IKeycloakClientRole _keycloakClientRole;
+    private readonly IRolePermissionRepo _rolePermissionRepo;
+    private readonly IDistributedCache _cache;
+    private readonly TimeSpan _defaultTtl = TimeSpan.FromMinutes(10);
 
-    public AuthorizationService(IBusinessRuleRepository ruleRepo)
+    public AuthorizationService(
+        IKeycloakClientRole keycloakClientRole,
+        IRolePermissionRepo rolePermissionRepo,
+        IDistributedCache cache)
     {
-        _ruleRepo = ruleRepo;
+        _keycloakClientRole = keycloakClientRole;
+        _rolePermissionRepo = rolePermissionRepo;
+        _cache = cache;
     }
 
-    public async Task<bool> IsAuthorizedAsync(UserContext user, string path, string method)
-    {
-        var deptRolePairs = user.DepartmentRoles
-            .SelectMany(kvp => kvp.Value.Select(roleGuid => new { DepartmentId = kvp.Key.Id, RoleGuid = roleGuid }));
+    public async Task<bool> IsAuthorizedAsync(string role, string path, string method)
+    {        
+        var keycloakRole = await _keycloakClientRole.GetRoleByNameAsync(role);
+        if (keycloakRole == null)
+            return false;
 
-        foreach (var pair in deptRolePairs)
+        var roleId = Guid.Parse(keycloakRole.Id);
+        var normalizedMethod = method.ToUpperInvariant();
+        var normalizedPath = path.ToLowerInvariant();
+
+        // Construct cache key
+        var cacheKey = $"authz:{roleId}:{normalizedMethod}:{normalizedPath}";
+
+        // Try to read cacheKey from Distributed Cache
+        var cached = await _cache.GetStringAsync(cacheKey);
+        if (cached is not null)
+            return bool.Parse(cached);
+
+        // Query DB
+        var isAuthorized = await _rolePermissionRepo.IsEndpointAuthorizedAsync(roleId, normalizedMethod, path);
+
+        // Cache authorization result 
+        var options = new DistributedCacheEntryOptions
         {
-            var rules = await _ruleRepo.GetByDepartmentRoleAndMethodAsync(pair.DepartmentId, pair.RoleGuid, method);
+            AbsoluteExpirationRelativeToNow = _defaultTtl
+        };
 
-            var match = rules.FirstOrDefault(r =>
-                GlobMatch(path, r.PathPattern));
+        await _cache.SetStringAsync(cacheKey, isAuthorized.ToString(), options);
 
-            if (match is { Allowed: true }) return true;
-            if (match is { Allowed: false }) return false;
-        }
-
-        return false;
-    }
-
-    private bool GlobMatch(string path, string pattern)
-    {
-        return pattern.EndsWith("*")
-            ? path.StartsWith(pattern.TrimEnd('*'), StringComparison.OrdinalIgnoreCase)
-            : path.Equals(pattern, StringComparison.OrdinalIgnoreCase);
+        return isAuthorized;
     }
 }

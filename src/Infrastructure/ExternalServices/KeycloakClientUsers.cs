@@ -21,23 +21,17 @@ public class KeycloakClientUser : KeycloakApiClient, IKeycloakClientUser
     {
     }
 
-    public async Task<List<KeycloakUser>?> GetUsersAsync()
+    public async Task<List<KeycloakUser>?> GetUsersAsync(string queryString)
     {
-        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users";
+        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users?{queryString}";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
-        
+
         var response = await SendRequestAsync(request);
         if (!response.IsSuccessStatusCode)
             return null;
 
         var jsonResponse = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse);
-    }
-
-    public async Task<string?> GetUserIdByUsernameAsync(string username)
-    {       
-        var user = await GetUserByNameAsync(username);
-        return user?.Id;
     }
 
     public async Task<KeycloakUser?> GetUserByNameAsync(string username)

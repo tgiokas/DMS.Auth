@@ -2,6 +2,7 @@
   "profiles": {
     "http": {
       "commandName": "Project",
+      "launchBrowser": false,
       "launchUrl": "authapi",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
@@ -11,6 +12,7 @@
     },
     "https": {
       "commandName": "Project",
+      "launchBrowser": false,
       "launchUrl": "authapi",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
@@ -20,10 +22,19 @@
     },
     "IIS Express": {
       "commandName": "IISExpress",
+      "launchBrowser": false,
       "launchUrl": "authapi",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchBrowser": false,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "httpPort": 5032,
+      "useSSL": false,
+      "publishAllPorts": true
     }
   },
   "iisSettings": {

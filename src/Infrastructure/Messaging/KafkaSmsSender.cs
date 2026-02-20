@@ -18,11 +18,10 @@ public class KafkaSmsSender : ISmsSender
 
     public async Task<bool> SendVerificationSmsAsync(string phoneNumber, string message)
     {
-        var notification = new NotificationDto
+        var notification = new NotificationEmailDto
         {
             Recipient = phoneNumber,
-            Message = message,
-            Channel = "sms"
+            Message = message,           
         };
 
         var headers = new[]

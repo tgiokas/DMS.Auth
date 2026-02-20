@@ -33,7 +33,7 @@ public class KeycloakClientAuthorization : KeycloakApiClient, IKeycloakClientAut
 
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        var response = await _httpClient.SendAsync(request);
+        var response = await SendRequestAsync(request);
         return response.IsSuccessStatusCode;
     }
 }

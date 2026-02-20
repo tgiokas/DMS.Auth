@@ -17,7 +17,7 @@ public class EmailVerifyController : ControllerBase
     }
 
     [HttpPost("send-email")]
-    public async Task<IActionResult> SendEmailVerification(EmailDto request)
+    public async Task<IActionResult> SendEmailVerification(EmailAddressDto request)
     {
         var result = await _emailService.SendVerificationLinkAsync(request.Email);
         if (!result.Success)
@@ -41,7 +41,7 @@ public class EmailVerifyController : ControllerBase
     }
 
     [HttpPost("send-code")]
-    public async Task<IActionResult> SendEmailCode(EmailDto request)
+    public async Task<IActionResult> SendEmailCode(EmailAddressDto request)
     {
         var result = await _emailService.SendVerificationCodeAsync(request.Email);
         if (!result.Success)

@@ -17,7 +17,7 @@ public class PasswordResetController : ControllerBase
     }
 
     [HttpPost("forgot")]
-    public async Task<IActionResult> ForgotPassword(EmailDto request)
+    public async Task<IActionResult> ForgotPassword(EmailAddressDto request)
     {
         var result = await _passwordResetService.SendResetLinkAsync(request.Email);
         if (!result.Success)

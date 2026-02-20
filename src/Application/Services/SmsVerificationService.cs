@@ -51,7 +51,7 @@ public class SmsVerificationService : ISmsVerificationService
         if (isValid)
             _smsCache.RemoveCode(phoneNumber);
 
-        await _userManagement.PhoneVerifiedAsync(phoneNumber);
+        await PhoneVerifiedAsync(phoneNumber);
 
         return Result<bool>.Ok(data: true, message: "Email verification Successfull");
     }
@@ -89,6 +89,20 @@ public class SmsVerificationService : ISmsVerificationService
             _smsCache.RemoveCode(phoneNumber);
 
         return isValid;
+    }
+
+    private async Task<Result<bool>> PhoneVerifiedAsync(string phoneNumber)
+    {
+        //var dbUser = await _userRepository.GetByPhoneNumberAsync(phoneNumber);
+        //if (dbUser == null)
+        //{
+        //    return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
+        //}
+
+        //dbUser.PhoneVerified = true;
+        //await _userRepository.UpdateAsync(dbUser);
+
+        return Result<bool>.Ok(data: true, message: "Phone Verified.");
     }
 
     private string GenerateCode()

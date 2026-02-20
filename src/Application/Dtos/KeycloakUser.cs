@@ -23,6 +23,9 @@ public class KeycloakUser
     [JsonPropertyName("email")]
     public string? Email { get; set; }
 
+    [JsonPropertyName("attributes")]
+    public Dictionary<string, string[]>? Attributes { get; set; }
+
     [JsonPropertyName("credentials")]
     public IEnumerable<KeycloakCredential>? Credentials { get; set; }
     [JsonIgnore]

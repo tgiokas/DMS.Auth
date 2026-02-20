@@ -1,8 +1,6 @@
-﻿using Authentication.Application.Dtos;
-
-namespace Authentication.Application.Interfaces;
+﻿namespace Authentication.Application.Interfaces;
 
 public interface IAuthorizationService
 {
-    Task<bool> IsAuthorizedAsync(UserContext user, string path, string method);
+    Task<bool> IsAuthorizedAsync(string role, string path, string method);
 }

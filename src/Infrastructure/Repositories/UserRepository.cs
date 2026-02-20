@@ -20,6 +20,14 @@ public class UserRepository : IUserRepository
         return await _dbContext.Users.ToListAsync();
     }
 
+    public async Task<List<User>> GetNotDeletedAsync()
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(r => r.IsDeleted == false)              
+            .ToListAsync();
+    }
+
     public async Task<User?> GetByKeycloakUserIdAsync(Guid keycloakUserId)
     {
         return await _dbContext.Users
@@ -30,19 +38,7 @@ public class UserRepository : IUserRepository
     {
         return await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Username == username);
-    }
-
-    public async Task<User?> GetByPhoneNumberAsync(string phoneNumber)
-    {
-        return await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.PhoneNumber == phoneNumber);
-    }
-
-    public async Task<User?> GetByEmailAsync(string email)
-    {
-        return await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.Email == email);
-    }    
+    } 
 
     public async Task AddAsync(User user)
     {

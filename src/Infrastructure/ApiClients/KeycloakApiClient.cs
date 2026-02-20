@@ -11,7 +11,7 @@ namespace Authentication.Infrastructure.ApiClients;
 
 public abstract class KeycloakApiClient : ApiClientBase
 {
-    protected readonly IConfiguration _configuration;
+    protected readonly IConfiguration? _configuration;
     private readonly IDistributedCache _cache;    
     protected readonly string _keycloakServerUrl;
     protected readonly string _realm;
@@ -28,13 +28,13 @@ public abstract class KeycloakApiClient : ApiClientBase
     protected KeycloakApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<KeycloakApiClient> logger, IDistributedCache cache)
       : base(httpClient, logger)
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _keycloakServerUrl = configuration["Keycloak:BaseUrl"] ?? throw new ArgumentNullException(nameof(configuration), "Keycloak:BaseUrl is null.");
-        _realm = configuration["Keycloak:Realm"] ?? throw new ArgumentNullException(nameof(configuration), "Keycloak:Realm is null.");
-        _clientId = configuration["Keycloak:ClientId"] ?? throw new ArgumentNullException(nameof(configuration), "Keycloak:ClientId is null.");
-        _clientSecret = configuration["Keycloak:ClientSecret"] ?? throw new ArgumentNullException(nameof(configuration), "Keycloak:ClientSecret is null.");
-        _authority = configuration["Keycloak:Authority"] ?? throw new ArgumentNullException(nameof(configuration), "Keycloak:Authority is null.");
-        _redirectUri = configuration["Keycloak:RedirectURI"] ?? throw new ArgumentNullException(nameof(configuration), "Keycloak:RedirectURI is null.");
+        _keycloakServerUrl = configuration["KEYCLOAK_BASEURL"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_BASEURL is null.");
+        _realm = configuration["KEYCLOAK_REALM"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_REALM is null.");
+        _clientId = configuration["KEYCLOAK_CLIENTID"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_CLIENTID is null.");
+        _clientSecret = configuration["KEYCLOAK_CLIENTSECRET"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_CLIENTSECRET is null.");
+        _authority = configuration["KEYCLOAK_AUTHORITY"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_AUTHORITY is null.");
+        _redirectUri = configuration["KEYCLOAK_REDIRECTURI"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_REDIRECTURI is null.");
+
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }
 

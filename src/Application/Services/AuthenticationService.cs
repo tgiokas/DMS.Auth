@@ -1,10 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Configuration;
 
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Enums;
 using Authentication.Domain.Interfaces;
+using Authentication.Domain.Entities;
 
 namespace Authentication.Application.Services;
 
@@ -12,22 +14,31 @@ public class AuthenticationService : IAuthenticationService
 {
     private readonly IKeycloakClientAuthentication _keycloakClientAuth;
     private readonly IKeycloakClientUser _keycloakClientUser;
+    private readonly IAuthLockoutService _authLockout;
+    private readonly IUserRepository _userRepository;
     private readonly ITotpRepository _secretRepo;
+    private readonly IEmailWhitelistRepository _emailWhitelistRepo;
     private readonly ITotpCache _cache;
     private readonly IConfiguration _configuration;
     private readonly IErrorCatalog _errors;
 
     public AuthenticationService(
         IKeycloakClientAuthentication keycloakClientAuth,
-        IKeycloakClientUser keycloakClientUser,
+        IKeycloakClientUser keycloakClientUser,       
+        IAuthLockoutService authLockout,
+        IUserRepository userRepository,
         ITotpRepository secretRepo,
+        IEmailWhitelistRepository emailWhitelistRepo,
         ITotpCache cache,
         IConfiguration configuration,
         IErrorCatalog errors)
     {
         _keycloakClientAuth = keycloakClientAuth;
-        _keycloakClientUser = keycloakClientUser;
+        _keycloakClientUser = keycloakClientUser; 
+        _authLockout = authLockout;
+        _userRepository = userRepository;
         _secretRepo = secretRepo;
+        _emailWhitelistRepo = emailWhitelistRepo;
         _cache = cache;
         _configuration = configuration;
         _errors = errors;
@@ -36,12 +47,25 @@ public class AuthenticationService : IAuthenticationService
     /// Authenticate / Login a user and retrieves a JWT token.
     public async Task<Result<LoginResponseDto>?> LoginUserAsync(string username, string password)
     {
-        // 1. Validate credentials via Keycloak & return Token  
+        var loginKey = $"pwd:{username.Trim().ToLowerInvariant()}";
+
+        // Check lock
+        if (await _authLockout.IsLockedAsync(loginKey))
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.TooManyAttempts);
+        }
+
+        // Validate credentials via Keycloak & return Token  
         var tokenResponse = await _keycloakClientAuth.GetUserAccessTokenAsync(username, password);
         if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.Access_token))
         {
+            // Register failure
+            await _authLockout.RegisterLoginFailureAsync(loginKey);
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
         }
+
+        // Register success
+        await _authLockout.RegisterLoginSuccessAsync(loginKey);
 
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
         if (keycloakUser == null && username.Contains('@'))
@@ -53,15 +77,13 @@ public class AuthenticationService : IAuthenticationService
         if (!Guid.TryParse(keycloakUser.Id, out var userId))
             return null;
 
-        // 2. Check MFA type from configuration
-        var mfaTypeString = _configuration["MfaType"] ?? "none";
-        if (!Enum.TryParse<MfaType>(mfaTypeString, true, out var mfaType))
-        {
-            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.InvalidMfaType);
-        }
+        // Check MFA type from repository
+        var dbUser = await _userRepository.GetByKeycloakUserIdAsync(userId);
+        if (dbUser == null)
+            return null;
 
-        // 3. No MFA --> return token directly  
-        if (mfaType == MfaType.None)
+        // No MFA --> return token directly  
+        if (dbUser.MfaType == MfaType.None)
         {
             return Result<LoginResponseDto>.Ok(new LoginResponseDto
             {
@@ -74,28 +96,31 @@ public class AuthenticationService : IAuthenticationService
         }
         else
         {
-            // 4. With MFA --> check if TOTP is configured
+            // With MFA --> check if TOTP is configured
             var hasTotp = await _secretRepo.ExistsAsync(userId);
 
-            // 5. Generate setup token and store LoginAttempt in cache  
+            // Generate setup token and store LoginAttempt in cache  
             var setupToken = Guid.NewGuid().ToString("N");
             await _cache.StoreLoginAttemptAsync(setupToken, new LoginAttemptCached
             {
                 Username = username,
-                Password = password,
                 KeycloakUserId = userId,
                 Email = keycloakUser.Email,
+                
+                AccessToken = tokenResponse.Access_token??"",
+                RefreshToken = tokenResponse?.Refresh_token??"",
+                ExpiresIn = tokenResponse?.Expires_in??0
             });
 
             return Result<LoginResponseDto>.Ok(new LoginResponseDto
             {
-                MfaEnabled = mfaType switch
+                MfaEnabled = dbUser.MfaType switch
                 {
                     MfaType.Email or MfaType.Sms => true,
                     MfaType.Totp => hasTotp,
                     _ => false
                 },
-                MfaMethod = mfaType.ToString().ToLower(),
+                MfaMethod = dbUser.MfaType.ToString().ToLower(),
                 MfaSetUpToken = setupToken
             });
         }
@@ -129,12 +154,69 @@ public class AuthenticationService : IAuthenticationService
 
     /// Authenticate an OAuth2 callback Code and retrieves a JWT token.
     public async Task<Result<LoginResponseDto>> OAuth2CallbackAsync(string code)
-    {
+    {        
         var tokenResponse = await _keycloakClientAuth.GetAccessTokenByCodeAsync(code);
         if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.Access_token))
         {
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
         }
+
+        // Parse email from JWT token
+        var handler = new JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(tokenResponse.Access_token);
+        var email = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+        if (email == null)
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
+        }
+
+        // Check email whitelist if enabled
+        var whitelistTypeValue = _configuration["AUTH_EMAILS_WHITELIST"];
+        if (string.IsNullOrWhiteSpace(whitelistTypeValue))
+            throw new ArgumentNullException(nameof(_configuration), "AUTH_EMAILS_WHITELIST is null.");
+
+        if (!whitelistTypeValue.Equals("off", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var isWhitelisted = await _emailWhitelistRepo.IsWhitelistedAsync(email);
+            if (!isWhitelisted)
+            {
+                return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.EmailNotWhitelisted);
+            }
+        }
+        
+        var keycloakUser = await _keycloakClientUser.GetUserByEmailAsync(email);
+        if (keycloakUser == null)
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
+        }
+
+        if (!Guid.TryParse(keycloakUser.Id, out var keycloakUserId))
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.UserIdNotValid);
+
+        var updateDto = new KeycloakUserDto
+        {
+            Id = keycloakUser.Id,
+            EmailVerified = true,
+        };
+
+        var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
+        if (!keycloakUpdateResult.Success)
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.UpdateInKeycloakFailed);
+        }
+
+        // Ensure local user exists
+        var localUser = await _userRepository.GetByKeycloakUserIdAsync(keycloakUserId);
+        if (localUser == null)
+        {
+            await _userRepository.AddAsync(new User
+            {
+                KeycloakUserId = keycloakUserId,
+                Username = keycloakUser.UserName,
+                IsAdmin = false,
+                MfaType = MfaType.None,
+            });
+        }        
 
         return Result<LoginResponseDto>.Ok(new LoginResponseDto
         {

@@ -57,7 +57,7 @@ public abstract class ApiClientBase
         return response;
     }
 
-    protected async Task<HttpResponseMessage> SendRequestAsync2(HttpRequestMessage request, CancellationToken cancellationToken = default)
+    protected async Task<HttpResponseMessage> SendRequestRetryAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
     {
         string requestBody = request.Content != null ? await request.Content.ReadAsStringAsync(cancellationToken) : string.Empty;
         var sw = Stopwatch.StartNew();

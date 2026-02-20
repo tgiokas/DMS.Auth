@@ -47,7 +47,7 @@ builder.Services.AddHttpClient<IKeycloakClientRole, KeycloakClientRole>();
 builder.Services.AddApplicationServices();
 
 // Register Database Context
-builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
+builder.Services.AddDatabaseServices(builder.Configuration, "postgresql");
 
 // Register Kafka-based SMS sender
 builder.Services.AddSingleton<ISmsSender, KafkaSmsSender>();
@@ -57,16 +57,18 @@ builder.Services.AddSingleton<IEmailSender, KafkaEmailSender>();
 
 builder.Services.AddSingleton<IMessagePublisher, KafkaPublisher>();
 
+builder.Services.AddScoped<IAuthLockoutService, AuthLockoutService>();
+
 builder.Services.AddDistributedPostgreSqlCache(options =>
 {
-    options.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.ConnectionString = builder.Configuration["AUTH_DB_CONNECTION"];
     options.SchemaName = "public";
     options.TableName = "CacheEntries";
 });
 
 builder.Services.AddSingleton<KeycloakRoleMapper>();
 
-// ---------- Error Catalog Path ----------
+// Error Catalog Path
 var path = Path.Combine(builder.Environment.ContentRootPath, "errors.json");
 if (!File.Exists(path))
     throw new FileNotFoundException($"errors.json not found at: {path}");
@@ -80,15 +82,15 @@ builder.Services.AddControllers();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.Audience = builder.Configuration["Keycloak:ClientId"];
+        options.Authority = builder.Configuration["KEYCLOAK_AUTHORITY"] ?? builder.Configuration["Keycloak:Authority"];
+        options.Audience = builder.Configuration["KEYCLOAK_CLIENTID"] ??builder.Configuration["Keycloak:ClientId"];
         options.RequireHttpsMetadata = bool.Parse(builder.Configuration["Keycloak:RequireHttpsMetadata"] ?? "false");
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Keycloak:Authority"],            
+            ValidIssuer = builder.Configuration["KEYCLOAK_AUTHORITY"] ?? builder.Configuration["Keycloak:Authority"],            
             ValidateAudience = true,
-            ValidAudiences = [builder.Configuration["Keycloak:ClientId"]],
+            ValidAudiences = [builder.Configuration["KEYCLOAK_CLIENTID"] ?? builder.Configuration["Keycloak:ClientId"]],
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"

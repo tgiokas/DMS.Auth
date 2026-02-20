@@ -12,38 +12,58 @@ using Authentication.Domain.Interfaces;
 namespace Authentication.Application.Services;
 
 public class MfaService : IMfaService
-{
-    private readonly IUserManagementService _userService;
+{    
     private readonly ISmsVerificationService _smsVerification;
     private readonly IEmailVerificationService _emailVerification;
     private readonly IKeycloakClientAuthentication _keycloakClientAuth;
     private readonly IKeycloakClientUser _keycloakClientUser;
+    private readonly IUserRepository _userRepository;
     private readonly ITotpRepository _secretRepo;
     private readonly ITotpCache _totpCache;
     private readonly IErrorCatalog _errors;
 
-    public MfaService(
-        IUserManagementService userService,
+    public MfaService(       
         ISmsVerificationService smsVerification,
         IEmailVerificationService emailVerification,
         IKeycloakClientAuthentication keycloakClientAuth,
         IKeycloakClientUser keycloakClientUser,
+        IUserRepository userRepository,
         ITotpRepository secretRepo,
         ITotpCache cache,
         IErrorCatalog errors)
-    {
-        _userService = userService;
+    {        
         _smsVerification = smsVerification;
         _emailVerification = emailVerification;
         _keycloakClientAuth = keycloakClientAuth;
         _keycloakClientUser = keycloakClientUser;
+        _userRepository = userRepository;
         _secretRepo = secretRepo;
         _totpCache = cache;
         _errors = errors;
     }
 
+    /// Set/Change User's Mfa Type
+    public async Task<Result<bool>> SetMfaTypeAsync(string username, string mfaType)
+    {
+        if (!Enum.TryParse<MfaType>(mfaType, true, out var parsedMfaType))
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.InvalidMfaType);
+        }
+
+        var dbUser = await _userRepository.GetByUsernameAsync(username);
+        if (dbUser == null)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
+        }
+
+        dbUser.MfaType = parsedMfaType;
+        await _userRepository.UpdateAsync(dbUser);
+
+        return Result<bool>.Ok(data: true, message: "Mfa Set successfully.");
+    }
+
     /// Generate TOTP QR Code and Secret 
-    public async Task<Result<TotpSetupDto>> GenerateTotpCode(string username, string issuer = "Auth")
+    public async Task<Result<TotpSetupDto>> GenerateTotpCodeAsync(string username, string issuer = "Auth")
     {
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
         if (keycloakUser == null)
@@ -87,7 +107,7 @@ public class MfaService : IMfaService
             SetupToken = setupToken
         };
 
-        return Result<TotpSetupDto>.Ok(data: topSetup, message: "Totp registered");
+        return Result<TotpSetupDto>.Ok(data: topSetup, message: "Totp generated");
     }
 
     /// Verify TOTP QR Code and save Secret 
@@ -132,34 +152,8 @@ public class MfaService : IMfaService
         // 4. Clean up setup cache
         await _totpCache.RemoveSecretAsync(setupToken);
 
-        // 5. Enable MFA for the user in DB
-        await _userService.EnableMfaAsync(username, MfaType.Totp);
-
         return Result<bool>.Ok(data: true, message: "Totp registered");
-    }
-
-    /// Disable or reset user's TOTP secret.
-    public async Task<Result<bool>> DisableTotpAsync(string username)
-    {
-        var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
-        if (keycloakUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
-        }
-
-        var userId = Guid.Parse(keycloakUser.Id);
-        var exists = await _secretRepo.ExistsAsync(userId);
-
-        if (!exists)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.NoSecretInDBForUser);
-        }
-
-        await _secretRepo.DeleteAsync(userId);
-        await _userService.DisableMfaAsync(username);
-
-        return Result<bool>.Ok(true, message: "TOTP disabled successfully");
-    }
+    }   
 
     /// Validate Login with TOTP Code  
     public async Task<Result<LoginResponseDto>> VerifyLoginByTotpAsync(string setupToken, string code)
@@ -185,17 +179,10 @@ public class MfaService : IMfaService
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.InvalidTOTPcode);
         }
 
-        // 4. Validate credentials via Keycloak & return Token  
-        var tokenResponse = await _keycloakClientAuth.GetUserAccessTokenAsync(loginAttempt.Username, loginAttempt.Password);
-        if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.Access_token))
-        {
-            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
-        }
-
-        // 5. Clean up LoginAttempt cache  
+        // 4. Clean up LoginAttempt cache  
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
 
-        // 6. Update the last verified timestamp for the TOTP secret
+        // 5. Update the last verified timestamp for the TOTP secret
         secret.LastVerifiedAt = DateTime.UtcNow;
         await _secretRepo.UpdateAsync(secret);
 
@@ -203,12 +190,35 @@ public class MfaService : IMfaService
         {
             MfaEnabled = true,
             MfaMethod = MfaType.Totp.ToString().ToLower(),
-            AccessToken = tokenResponse.Access_token,
-            RefreshToken = tokenResponse.Refresh_token,
-            ExpiresIn = tokenResponse.Expires_in
+            AccessToken = loginAttempt.AccessToken,
+            RefreshToken = loginAttempt.RefreshToken,
+            ExpiresIn = loginAttempt.ExpiresIn
         };
 
         return Result<LoginResponseDto>.Ok(loginResponse);
+    }
+
+    /// Disable or reset user's TOTP secret.
+    public async Task<Result<bool>> DisableTotpAsync(string username)
+    {
+        var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
+        if (keycloakUser == null)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
+        }
+
+        var userId = Guid.Parse(keycloakUser.Id);
+        var exists = await _secretRepo.ExistsAsync(userId);
+
+        if (!exists)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.NoSecretInDBForUser);
+        }
+
+        await _secretRepo.DeleteAsync(userId);
+        await DisableMfaAsync(username);
+
+        return Result<bool>.Ok(true, message: "TOTP disabled successfully");
     }
 
     /// Send MFA Email Code 
@@ -249,23 +259,15 @@ public class MfaService : IMfaService
             return _errors.Fail<LoginResponseDto>(result.ErrorCode!);
         }
 
-        var tokenResponse = await _keycloakClientAuth.GetUserAccessTokenAsync(loginAttempt.Username, loginAttempt.Password);
-        if (tokenResponse == null || tokenResponse.Access_token == null)
-        {
-            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
-        }
-
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
-
-        await _userService.EnableMfaAsync(loginAttempt.Username, MfaType.Email);
 
         var loginResponse = new LoginResponseDto
         {
             MfaEnabled = true,
-            MfaMethod = MfaType.Email.ToString().ToLower(),
-            AccessToken = tokenResponse.Access_token,
-            RefreshToken = tokenResponse.Refresh_token,
-            ExpiresIn = tokenResponse.Expires_in
+            MfaMethod = MfaType.Totp.ToString().ToLower(),
+            AccessToken = loginAttempt.AccessToken,
+            RefreshToken = loginAttempt.RefreshToken,
+            ExpiresIn = loginAttempt.ExpiresIn
         };
 
         return Result<LoginResponseDto>.Ok(loginResponse);
@@ -309,26 +311,32 @@ public class MfaService : IMfaService
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.InvalidSmsCode);
         }
 
-        var tokenResponse = await _keycloakClientAuth.GetUserAccessTokenAsync(loginAttempt.Username, loginAttempt.Password);
-        if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.Access_token))
-        {
-            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
-        }
-
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
-
-        await _userService.EnableMfaAsync(loginAttempt.Username, MfaType.Sms);
 
         var loginResponse = new LoginResponseDto
         {
             MfaEnabled = true,
-            MfaMethod = MfaType.Sms.ToString().ToLower(),
-            AccessToken = tokenResponse.Access_token,
-            RefreshToken = tokenResponse.Refresh_token,
-            ExpiresIn = tokenResponse.Expires_in
+            MfaMethod = MfaType.Totp.ToString().ToLower(),
+            AccessToken = loginAttempt.AccessToken,
+            RefreshToken = loginAttempt.RefreshToken,
+            ExpiresIn = loginAttempt.ExpiresIn
         };
 
         return Result<LoginResponseDto>.Ok(loginResponse);
+    }    
+
+    private async Task<Result<bool>> DisableMfaAsync(string username)
+    {
+        var dbUser = await _userRepository.GetByUsernameAsync(username);
+        if (dbUser == null)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
+        }
+
+        dbUser.MfaType = MfaType.None;
+        await _userRepository.UpdateAsync(dbUser);
+
+        return Result<bool>.Ok(data: true, message: "Mfa Set In DB");
     }
 
     private static bool ValidateCode(string base32Secret, string code)

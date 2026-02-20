@@ -83,9 +83,9 @@ public class RoleController : ControllerBase
     }
 
     [HttpPost("delete")]
-    public async Task<IActionResult> DeleteRole(RoleDto request)
+    public async Task<IActionResult> DeleteRole(List<RoleDto> request)
     {
-        var result = await _roleManagementService.DeleteRoleAsync(request.RoleName);
+        var result = await _roleManagementService.DeleteRoleAsync(request);
         if (!result.Success)
         {
             return Accepted(result);

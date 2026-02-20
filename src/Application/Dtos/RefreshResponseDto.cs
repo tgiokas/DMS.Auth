@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Authentication.Application.Dtos;
+﻿namespace Authentication.Application.Dtos;
 
 public class RefreshResponseDto
 {

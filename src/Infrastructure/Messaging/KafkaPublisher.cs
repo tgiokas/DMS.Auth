@@ -19,29 +19,59 @@ public sealed class KafkaPublisher : IMessagePublisher, IDisposable
 
         var producerConfig = new ProducerConfig
         {
-            BootstrapServers = config["Kafka:BootstrapServers"] ?? "kafka:9092",
+            // Bootstrap servers
+            BootstrapServers = config["KAFKA_BOOTSTRAP_SERVERS"]
+                ?? throw new ArgumentNullException(nameof(config), "KAFKA_BOOTSTRAP_SERVERS is not set."),
 
-            // Critical settings for better failover handling    
-            Acks = Enum.Parse<Acks>(config["Kafka:Acks"] ?? "Leader"),
-
-            // Improve broker discovery and failover    
-            SocketConnectionSetupTimeoutMs = int.TryParse(config["Kafka:SocketConnectionSetupTimeoutMs"], out var socketConnectionSetupTimeoutMs) ? socketConnectionSetupTimeoutMs : 10000,
-            SocketTimeoutMs = int.TryParse(config["Kafka:SocketTimeoutMs"], out var socketTimeoutMs) ? socketTimeoutMs : 5000,
-
-            // Retry settings    
-            MessageSendMaxRetries = int.TryParse(config["Kafka:MessageSendMaxRetries"], out var messageSendMaxRetries) ? messageSendMaxRetries : 5,
-            RetryBackoffMs = int.TryParse(config["Kafka:RetryBackoffMs"], out var retryBackoffMs) ? retryBackoffMs : 100,
-            ReconnectBackoffMs = int.TryParse(config["Kafka:ReconnectBackoffMs"], out var reconnectBackoffMs) ? reconnectBackoffMs : 50,
-            ReconnectBackoffMaxMs = int.TryParse(config["Kafka:ReconnectBackoffMaxMs"], out var reconnectBackoffMaxMs) ? reconnectBackoffMaxMs : 5000,
-
-            // Reasonable timeouts    
-            RequestTimeoutMs = int.TryParse(config["Kafka:RequestTimeoutMs"], out var requestTimeoutMs) ? requestTimeoutMs : 5000,
-            MessageTimeoutMs = int.TryParse(config["Kafka:MessageTimeoutMs"], out var messageTimeoutMs) ? messageTimeoutMs : 15000,
-
-            //MaxInFlight = 5,
-
-            //EnableIdempotence = true,
+            // Durability / Acknowledgement
+            Acks = Enum.Parse<Acks>(
+                config["AUTH_KAFKA_ACKS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_ACKS is not set.")),
             
+            // Base delay before reconnecting to a broker
+            ReconnectBackoffMs = int.Parse(
+                config["AUTH_KAFKA_RECONNECT_BACKOFF_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_RECONNECT_BACKOFF_MS is not set.")),
+
+            // Maximum delay when exponential backoff applies
+            ReconnectBackoffMaxMs = int.Parse(
+                config["AUTH_KAFKA_RECONNECT_BACKOFF_MAX_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_RECONNECT_BACKOFF_MAX_MS is not set.")),
+            
+            // Time allowed to establish initial TCP connection
+            SocketConnectionSetupTimeoutMs = int.Parse(
+                config["AUTH_KAFKA_SOCKET_CONNECTION_SETUP_TIMEOUT_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_SOCKET_CONNECTION_SETUP_TIMEOUT_MS is not set.")),
+
+            // How long to wait for socket operations before failing
+            SocketTimeoutMs = int.Parse(
+                config["AUTH_KAFKA_SOCKET_TIMEOUT_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_SOCKET_TIMEOUT_MS is not set.")),
+            
+            // How many times the .NET client retries failed sends
+            MessageSendMaxRetries = int.Parse(
+                config["AUTH_KAFKA_MESSAGE_SEND_MAX_RETRIES"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_MESSAGE_SEND_MAX_RETRIES is not set.")),
+
+            // Wait between retries to avoid hammering the broker
+            RetryBackoffMs = int.Parse(
+                config["AUTH_KAFKA_RETRY_BACKOFF_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_RETRY_BACKOFF_MS is not set.")),
+            
+            // Max time broker has to respond to produce request
+            RequestTimeoutMs = int.Parse(
+                config["AUTH_KAFKA_REQUEST_TIMEOUT_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_REQUEST_TIMEOUT_MS is not set.")),
+
+            // Max time before message is considered failed (client side)
+            MessageTimeoutMs = int.Parse(
+                config["AUTH_KAFKA_MESSAGE_TIMEOUT_MS"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_MESSAGE_TIMEOUT_MS is not set.")),
+
+            // Enabling idempotent producers
+            EnableIdempotence = bool.Parse(
+                config["AUTH_KAFKA_ENABLE_IDEMPOTENCE"]
+                ?? throw new ArgumentNullException(nameof(config), "AUTH_KAFKA_ENABLE_IDEMPOTENCE is not set."))
         };
 
         _producer = new ProducerBuilder<string, string>(producerConfig).Build();

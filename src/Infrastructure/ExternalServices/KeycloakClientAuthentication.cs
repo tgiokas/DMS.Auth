@@ -54,7 +54,7 @@ public class KeycloakClientAuthentication : KeycloakApiClient, IKeycloakClientAu
             new KeyValuePair<string, string>("client_secret", _clientSecret),
             new KeyValuePair<string, string>("code", code),
             new KeyValuePair<string, string>("redirect_uri", _redirectUri)
-        });
+        });       
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token")
         {
@@ -110,15 +110,15 @@ public class KeycloakClientAuthentication : KeycloakApiClient, IKeycloakClientAu
         return response.IsSuccessStatusCode;
     }
 
-    public Task<string> CyLoginUrl()
+    public Task<string> EntraLoginUrlAsync()
     {
-        string idpProvider = "cy-login";
+        string idpProvider = "cbs-entra";
 
         string loginUrl = $"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/auth" +
              $"?client_id={Uri.EscapeDataString(_clientId)}" +
              $"&redirect_uri={Uri.EscapeDataString(_redirectUri)}" +
              $"&response_type=code" +
-             $"&scope={Uri.EscapeDataString("openid cegg_profile")}" +
+             $"&scope={Uri.EscapeDataString("openid profile email")}" +
              $"&kc_idp_hint={Uri.EscapeDataString(idpProvider)}";
 
         return Task.FromResult(loginUrl);

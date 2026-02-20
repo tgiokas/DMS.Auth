@@ -55,5 +55,15 @@ public static class ErrorCodes
         public const string KeycloakConflictInUser = "AUTH-048";
         public const string PasswordResetTokenInvalid = "AUTH-049";
         public const string InvalidMfaType = "AUTH-050";
+        public const string UpdateInDBFailed = "AUTH-051";
+        public const string UnauthorizedUser = "AUTH-052";
+        public const string UsernameIsDeleted = "AUTH-053";
+        public const string EmailNotWhitelisted = "AUTH-054";
+        public const string WhitelistEntryNotFound = "AUTH-055";
+        public const string MfaTypeNotFound = "AUTH-056";
+        public const string InvalidWhitelistType = "AUTH-057";
+        public const string InvalidWhitelistValue = "AUTH-058";
+        public const string WhitelistValueExists = "AUTH-059";
+        public const string TooManyAttempts = "AUTH-060";
     }
 }

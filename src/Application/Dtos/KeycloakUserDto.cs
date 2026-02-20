@@ -10,5 +10,5 @@ public class KeycloakUserDto
     public string? FirstName { get; set; }
     public string? LastName { get; set; }    
     public bool? Enabled { get; set; }    
-    public bool EmailVerified { get; set; }
+    public bool? EmailVerified { get; set; }
 }

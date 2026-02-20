@@ -17,7 +17,8 @@ public static class ApplicationServiceRegistration
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<IEmailVerificationService, EmailVerificationService>();
         services.AddScoped<ISmsVerificationService, SmsVerificationService>();
-        services.AddScoped<BusinessRuleService, BusinessRuleService>();
+        services.AddScoped<RolePermissionService, RolePermissionService>();
+        services.AddScoped<IConfigurationService, ConfigurationService>();
 
         return services;
     }

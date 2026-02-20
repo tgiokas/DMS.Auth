@@ -1,4 +1,4 @@
-﻿using Authentication.Domain.Enums;
+﻿using System.Text.Json.Serialization;
 
 namespace Authentication.Application.Dtos;
 
@@ -14,9 +14,16 @@ public class UserProfileDto
     public bool? Enabled { get; set; }
 
     // Local user properties
-    public bool IsAdmin { get; set; }
+    [JsonIgnore]
+    public bool Deleted { get; set; }
     public string? PhoneNumber { get; set; }
-    public bool PhoneVerified { get; set; }
+    public bool IsAdmin { get; set; }    
     public string? MfaMethod { get; set; }
     public DateTime? CreatedAt { get; set; }
+    public DateTime? ModifiedAt { get; set; }
+
+    // Keycloak user properties
+    public Dictionary<string, string[]>? Attributes { get; set; }
+    public List<RoleProfileDto> Roles { get; set; } = new();
+
 }

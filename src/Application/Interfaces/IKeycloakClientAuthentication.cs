@@ -8,4 +8,5 @@ public interface IKeycloakClientAuthentication
     Task<TokenDto?> GetAccessTokenByCodeAsync(string code);
     Task<TokenDto?> RefreshTokenAsync(string refreshToken);    
     Task<bool> LogoutAsync(string refreshToken);
+    Task<string> EntraLoginUrlAsync();
 }

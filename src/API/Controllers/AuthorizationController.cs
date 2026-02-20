@@ -1,8 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-
-using Authentication.Application.Dtos;
 using Authentication.Application.Interfaces;
 
 namespace Authentication.Api.Controllers;
@@ -19,49 +17,54 @@ public class AuthorizationController : ControllerBase
         ILogger<AuthorizationController> logger)
     {
         _authorizationService = authorizationService;
-        _logger = logger;      
+        _logger = logger;
     }
 
     [HttpGet, HttpPost]
     public async Task<IActionResult> Authorize()
     {
         var token = ExtractBearerToken(Request, out var errorResult);
-        if (token is null) return errorResult!;
+        if (token is null)
+            return errorResult!;
 
         var path = Request.Headers["X-Forwarded-Uri"].FirstOrDefault() ?? "/";
         var method = Request.Headers["X-Forwarded-Method"].FirstOrDefault() ?? "GET";
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
-        var userId = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "anonymous";
 
-        var deptRolesJson = jwt.Payload["department_roles"]?.ToString();
-        if (string.IsNullOrEmpty(deptRolesJson))
-        {
-            _logger.LogWarning("Missing department_roles in token for user {User}", userId);
-            return Forbid("Missing department_roles");
-        }
-
-        List<DepartmentRole>? deptRoles;
         try
         {
-            deptRoles = JsonSerializer.Deserialize<List<DepartmentRole>>(deptRolesJson);
+            var resourceAccess = jwt.Payload["resource_access"] as JsonElement?;
+            if (resourceAccess == null || !resourceAccess.Value.TryGetProperty("auth-app", out var authApp))
+            {
+                _logger.LogWarning("Missing resource_access.auth-app in token");
+                return Forbid("Missing auth-app role data");
+            }
+
+            if (!authApp.TryGetProperty("roles", out var rolesElement) ||
+                rolesElement.ValueKind != JsonValueKind.Array ||
+                !rolesElement.EnumerateArray().Any())
+            {
+                _logger.LogWarning("Missing roles array in resource_access.auth-app");
+                return Forbid("Missing roles array");
+            }
+
+            // Take only the first role
+            var firstRole = rolesElement.EnumerateArray().First().GetString();
+            if (string.IsNullOrWhiteSpace(firstRole))
+            {
+                _logger.LogWarning("Empty role in resource_access.auth-app");
+                return Forbid("Invalid role data");
+            }
+
+            var isAuthorized = await _authorizationService.IsAuthorizedAsync(firstRole, path, method);
+            return isAuthorized ? Ok() : Forbid();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize department_roles for user {User}", userId);
-            return Forbid("Malformed department_roles claim");
+            _logger.LogError(ex, "Error parsing token");
+            return Forbid("Invalid token structure");
         }
-        
-        var departmentRolesDict = deptRoles!
-            .ToDictionary(
-                dr => dr.Department,
-                dr => (IReadOnlyList<Guid>)dr.Roles);
-
-        var userContext = new UserContext(userId, departmentRolesDict);
-
-        var ok = await _authorizationService.IsAuthorizedAsync(userContext, path, method);
-
-        return ok ? Ok() : Forbid();
     }
 
     private static string? ExtractBearerToken(HttpRequest req, out IActionResult? error)
@@ -73,6 +76,7 @@ public class AuthorizationController : ControllerBase
             error = new UnauthorizedObjectResult("Missing Bearer token");
             return null;
         }
+
         return auth["Bearer ".Length..].Trim();
     }
 }

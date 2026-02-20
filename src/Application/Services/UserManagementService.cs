@@ -15,86 +15,227 @@ public class UserManagementService : IUserManagementService
     private readonly IRoleManagementService _roleManagementService;
     private readonly IPasswordResetService _passwordResetService;
     private readonly IKeycloakClientUser _keycloakClientUser;
-    private readonly IUserRepository _userRepository;
+    private readonly IConfigurationService _configService;
+    private readonly IUserRepository _userRepository;   
+    private readonly IEmailWhitelistRepository _emailWhitelistRepo;
     private readonly IConfiguration _configuration;
     private readonly IErrorCatalog _errors;
     private readonly string AdminRoleName = "admin";
 
-    public UserManagementService(         
+    public UserManagementService(
         IRoleManagementService roleManagementService,
         IPasswordResetService passwordResetService,
         IKeycloakClientUser keycloakClientUser,
-        IUserRepository userRepository,
+        IConfigurationService configService,
+        IUserRepository userRepository,        
+        IEmailWhitelistRepository emailWhitelistRepo,
         IConfiguration configuration,
         IErrorCatalog errors)
     {
         _roleManagementService = roleManagementService;
         _passwordResetService = passwordResetService;
         _keycloakClientUser = keycloakClientUser;
-        _userRepository = userRepository;
+        _configService = configService;
+        _userRepository = userRepository;        
+        _emailWhitelistRepo = emailWhitelistRepo;
         _configuration = configuration;
         _errors = errors;
     }
-
+   
     public async Task<Result<Dtos.PagedResult<UserProfileDto>>> GetUsersAsync(UserQueryParams queryParams)
     {
-        var keycloakUsers = await _keycloakClientUser.GetUsersAsync();
-        if (keycloakUsers == null)
+        if (queryParams == null)
+            queryParams = new UserQueryParams();
+
+        // Build filters map
+        var filtersMap = (queryParams.Filters ?? new List<FilterCriterion>())
+            .ToDictionary(f => f.Field.Trim().ToLowerInvariant(), f => f.Value.Trim(), StringComparer.OrdinalIgnoreCase);
+
+        // Rule: if "search" exists -> ignore every other filter 
+        bool hasSearch = filtersMap.TryGetValue("search", out var searchVal) && !string.IsNullOrWhiteSpace(searchVal);
+
+        // Build Keycloak filter string
+        string filterString = string.Empty;
+        if (filtersMap.Any())
         {
-            return _errors.Fail<Dtos.PagedResult<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
-        }            
-
-        // Merge Keycloak and auth-db user data        
-        var localUsers = await _userRepository.GetAllAsync();
-        var localUserDict = localUsers.ToDictionary(u => u.Username, StringComparer.OrdinalIgnoreCase);
-
-        var userProfiles = new List<UserProfileDto>();
-        foreach (var keycloakUser in keycloakUsers)
-        {
-            localUserDict.TryGetValue(keycloakUser.UserName ?? string.Empty, out var localUser);
-
-            userProfiles.Add(MapToUserProfile(keycloakUser, localUser));
+            if (hasSearch)
+            {
+                filterString = $"search={searchVal}";
+            }
+            else
+            {
+                var parts = new List<string>();
+                if (filtersMap.TryGetValue("username", out var username) && !string.IsNullOrWhiteSpace(username))
+                    parts.Add($"username={username}");
+                if (filtersMap.TryGetValue("email", out var email) && !string.IsNullOrWhiteSpace(email))
+                    parts.Add($"email={email}");
+                if (filtersMap.TryGetValue("firstname", out var firstName) && !string.IsNullOrWhiteSpace(firstName))
+                    parts.Add($"firstName={firstName}");
+                if (filtersMap.TryGetValue("lastname", out var lastName) && !string.IsNullOrWhiteSpace(lastName))
+                    parts.Add($"lastName={lastName}");
+                if (filtersMap.TryGetValue("enabled", out var enabled) && !string.IsNullOrWhiteSpace(enabled))
+                    parts.Add($"enabled={enabled.ToLowerInvariant()}");               
+                filterString = string.Join("&", parts);
+            }
         }
 
-        // multi-field sorting
-        var sortBy = string.IsNullOrWhiteSpace(queryParams.SortBy) ? "UserName" : queryParams.SortBy;
-        var sortFields = sortBy.Split(',', StringSplitOptions.RemoveEmptyEntries)
+        // Fetch users from Keycloak 
+        var keycloakUsers = await _keycloakClientUser.GetUsersAsync(filterString);
+        if (keycloakUsers == null)
+            return _errors.Fail<Dtos.PagedResult<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
+
+        // Fetch users from DB (not deleted)
+        var localUsers = await _userRepository.GetNotDeletedAsync();
+        var localUserDict = localUsers
+            .Where(u => !string.IsNullOrEmpty(u.Username))
+            .ToDictionary(u => u.Username!, StringComparer.OrdinalIgnoreCase);
+
+        // Filter Keycloak Users with those present in DB
+        var filteredKeycloakUsers = keycloakUsers
+            .Where(kc => kc.UserName is not null && localUserDict.ContainsKey(kc.UserName));
+
+        // Merge
+        var userProfiles = new List<UserProfileDto>();
+        foreach (var kcUser in filteredKeycloakUsers)
+        {
+            localUserDict.TryGetValue(kcUser.UserName!, out var localUser);
+
+            var rolesResult = await _roleManagementService.GetUserRolesAsync(kcUser.UserName!);
+            var roles = rolesResult.Success ? (rolesResult.Data ?? new List<RoleProfileDto>()) : new List<RoleProfileDto>();
+
+            userProfiles.Add(MapToUserProfile(kcUser, localUser, roles));
+        }
+
+        // No filters, sorting, or pagination --> return everything immediately
+        bool noFilters = !filtersMap.Any();
+        bool noSorting = queryParams.SortFields == null || !queryParams.SortFields.Any();
+        bool noPaging = !queryParams.PageNumber.HasValue && !queryParams.PageSize.HasValue;
+
+        if (noFilters && noSorting && noPaging)
+        {
+            var resultAll = new Dtos.PagedResult<UserProfileDto>
+            {
+                Results = userProfiles,
+                CurrentPage = 1,
+                PageSize = userProfiles.Count,
+                Total = userProfiles.Count,
+                Pages = 1
+            };
+            return Result<Dtos.PagedResult<UserProfileDto>>.Ok(resultAll);
+        }
+
+        // Apply local filters ONLY when search is NOT present
+        if (!hasSearch && queryParams.Filters != null && queryParams.Filters.Any())
+        {
+            if (filtersMap.TryGetValue("isadmin", out var isAdminValue) && bool.TryParse(isAdminValue, out var isAdminBool))
+            {
+                userProfiles = userProfiles.Where(u => u.IsAdmin == isAdminBool).ToList();
+            }
+
+            // CreatedAtFrom / CreatedAtTo filters (inclusive)
+            DateTime? createdFrom = null;
+            DateTime? createdTo = null;
+
+            if (filtersMap.TryGetValue("createdatfrom", out var fromValue) &&
+                DateTime.TryParse(fromValue, out var parsedFrom))
+            {
+                createdFrom = parsedFrom.Date; // start of day
+            }
+
+            if (filtersMap.TryGetValue("createdatto", out var toValue) &&
+                DateTime.TryParse(toValue, out var parsedTo))
+            {
+                createdTo = parsedTo.Date.AddDays(1).AddTicks(-1); // end of day
+            }
+
+            if (createdFrom.HasValue && createdTo.HasValue)
+            {
+                // Between range
+                userProfiles = userProfiles
+                    .Where(u => u.CreatedAt >= createdFrom.Value && u.CreatedAt <= createdTo.Value)
+                    .ToList();
+            }
+            else if (createdFrom.HasValue)
+            {
+                // From only
+                userProfiles = userProfiles
+                    .Where(u => u.CreatedAt >= createdFrom.Value)
+                    .ToList();
+            }
+            else if (createdTo.HasValue)
+            {
+                // To only
+                userProfiles = userProfiles
+                    .Where(u => u.CreatedAt <= createdTo.Value)
+                    .ToList();
+            }
+        }
+
+        // Sorting
+        var sortBy = string.IsNullOrWhiteSpace(queryParams.SortFields)
+            ? "UserName"
+            : queryParams.SortFields;
+
+        var sortFields = sortBy
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
             .Select(f => f.Trim())
-            .Where(f => typeof(UserProfileDto).GetProperties().Any(p => p.Name.Equals(f, StringComparison.OrdinalIgnoreCase)))
+            .Where(f => typeof(UserProfileDto).GetProperties()
+                .Any(p => p.Name.Equals(f, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
-        if (sortFields.Count == 0)
+        // Always ensure at least one valid sort field
+        if (!sortFields.Any())
             sortFields.Add("UserName");
 
-        // Build dynamic sort
-        var sortString = string.Join(", ", sortFields.Select(f => $"{f} {(queryParams.SortDescending ? "descending" : "ascending")}"));
-
-        var sortedProfiles = userProfiles
-            .AsQueryable()
-            .OrderBy(sortString)
+        // Parse sort directions (aligned to sort fields)
+        var directions = (queryParams.SortDirections ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(d => d.Trim().ToLowerInvariant())
             .ToList();
 
-        // Pagination
-        var totalCount = sortedProfiles.Count;
-        var totalPages = (int)Math.Ceiling(totalCount / (double)queryParams.PageSize);
-        var pagedProfiles = sortedProfiles
-            .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
-            .Take(queryParams.PageSize)
+        // Normalize list lengths 
+        while (directions.Count < sortFields.Count)
+            directions.Add(directions.LastOrDefault() ?? "ascending");
+
+        // Fallback validation
+        directions = directions
+            .Select(d => d == "descending" ? "descending" : "ascending")
             .ToList();
+
+        // Build combined sort string
+        var sortString = string.Join(", ",
+            sortFields.Select((f, i) => $"{f} {directions[i]}"));
+
+        var sorted = userProfiles.AsQueryable().OrderBy(sortString).Cast<UserProfileDto>();
+
+        // Pagination (return all if not provided)
+        if (queryParams.PageNumber.HasValue && queryParams.PageSize.HasValue &&
+            queryParams.PageNumber > 0 && queryParams.PageSize > 0)
+        {
+            sorted = sorted
+                .Skip((queryParams.PageNumber.Value - 1) * queryParams.PageSize.Value)
+                .Take(queryParams.PageSize.Value);
+        }
+
+        var items = sorted.ToList();
+        var totalCount = userProfiles.Count;
+        var pageSize = queryParams.PageSize ?? totalCount;
+        var totalPages = (pageSize > 0) ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
+        var currentPage = queryParams.PageNumber ?? 1;
 
         var pagedResult = new Dtos.PagedResult<UserProfileDto>
         {
-            Items = pagedProfiles,
-            CurrentPage = queryParams.PageNumber,
-            PageSize = queryParams.PageSize,
-            TotalCount = totalCount,
-            TotalPages = totalPages
+            Results = items,
+            CurrentPage = currentPage,
+            PageSize = pageSize,
+            Total = totalCount,
+            Pages = totalPages
         };
 
         return Result<Dtos.PagedResult<UserProfileDto>>.Ok(pagedResult);
     }
 
-    public async Task<Result<UserProfileDto>> GetUserProfileByName(string username)
+    public async Task<Result<UserProfileDto>> GetUserByNameAsync(string username)
     {
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
         if (keycloakUser == null)
@@ -103,30 +244,39 @@ public class UserManagementService : IUserManagementService
         }
 
         var localUser = await _userRepository.GetByUsernameAsync(username);
-        
-        UserProfileDto profile = MapToUserProfile(keycloakUser, localUser);
 
-        return Result<UserProfileDto>.Ok(profile);        
-    }
+        var rolesResult = await _roleManagementService.GetUserRolesAsync(keycloakUser.UserName);
+        var roles = rolesResult.Success ? rolesResult.Data ?? new List<RoleProfileDto>() : new List<RoleProfileDto>();
 
-    public async Task<Result<UserProfileDto>> GetUserProfileById(string userId)
-    {
-        var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userId);
-        if (keycloakUser == null)
-        {
-            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
-        }            
-
-        var localUser = await _userRepository.GetByUsernameAsync(keycloakUser.UserName ?? string.Empty);
-
-        UserProfileDto profile = MapToUserProfile(keycloakUser, localUser);
+        UserProfileDto profile = MapToUserProfile(keycloakUser, localUser, roles);
 
         return Result<UserProfileDto>.Ok(profile);
     }
 
-    public async Task<Result<List<UserProfileDto>>> GetUserProfilesByIds(List<IdDto> userIds)
+    public async Task<Result<UserProfileDto>> GetUserByIdAsync(string userId)
     {
-        var profiles = new List<UserProfileDto>();
+        if (!Guid.TryParse(userId, out var guidUserId))
+            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UserIdNotValid);
+
+        var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userId);
+        if (keycloakUser == null)
+        {
+            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
+        }
+
+        var localUser = await _userRepository.GetByUsernameAsync(keycloakUser.UserName);
+
+        var rolesResult = await _roleManagementService.GetUserRolesAsync(keycloakUser.UserName);
+        var roles = rolesResult.Success ? rolesResult.Data ?? new List<RoleProfileDto>() : new List<RoleProfileDto>();
+
+        UserProfileDto profile = MapToUserProfile(keycloakUser, localUser, roles);
+
+        return Result<UserProfileDto>.Ok(profile);
+    }
+
+    public async Task<Result<List<UserProfileDto>>> GetUsersByIdsAsync(List<IdDto> userIds)
+    {
+        var userProfiles = new List<UserProfileDto>();
         var notFoundIds = new List<string>();
 
         foreach (var userId in userIds)
@@ -138,11 +288,15 @@ public class UserManagementService : IUserManagementService
                 continue;
             }
 
-            var localUser = await _userRepository.GetByUsernameAsync(keycloakUser.UserName ?? string.Empty);
-            profiles.Add(MapToUserProfile(keycloakUser, localUser));
+            var localUser = await _userRepository.GetByUsernameAsync(keycloakUser.UserName);
+
+            var rolesResult = await _roleManagementService.GetUserRolesAsync(keycloakUser.UserName);
+            var roles = rolesResult.Success ? rolesResult.Data ?? new List<RoleProfileDto>() : new List<RoleProfileDto>();
+
+            userProfiles.Add(MapToUserProfile(keycloakUser, localUser, roles));
         }
 
-        if (profiles.Count == 0)
+        if (userProfiles.Count == 0)
         {
             return _errors.Fail<List<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
         }
@@ -151,22 +305,36 @@ public class UserManagementService : IUserManagementService
             ? $"Some users not found: {string.Join(", ", notFoundIds)}"
             : "All users found.";
 
-        return Result<List<UserProfileDto>>.Ok(profiles, message);
+        return Result<List<UserProfileDto>>.Ok(userProfiles, message);
     }
 
     public async Task<Result<UserProfileDto>> CreateUserAsync(UserCreateDto request)
-    {
-        var mfaTypeString = _configuration["MfaType"] ?? "none";
-        if (!Enum.TryParse<MfaType>(mfaTypeString, true, out var mfaType))
+    {        
+        // Check email whitelist if enabled
+        var whitelistTypeValue = _configuration["AUTH_EMAILS_WHITELIST"];
+        if (string.IsNullOrWhiteSpace(whitelistTypeValue))
+            throw new ArgumentNullException(nameof(_configuration), "AUTH_EMAILS_WHITELIST is null.");
+
+        if (!whitelistTypeValue.Equals("off", StringComparison.CurrentCultureIgnoreCase))
         {
-            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.InvalidMfaType);
+            var isWhitelisted = await _emailWhitelistRepo.IsWhitelistedAsync(request.Email);
+            if (!isWhitelisted)
+            {
+                return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.EmailNotWhitelisted);
+            }
         }
+
+        request.Username = request.Username.ToLower();
 
         // Check if user exists
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(request.Username);
         if (keycloakUser != null)
         {
-            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UsernameAlreadyExists);
+            var localUser = await _userRepository.GetByUsernameAsync(request.Username);
+            if (localUser != null && localUser.IsDeleted)
+                return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UsernameIsDeleted);
+            else
+                return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UsernameAlreadyExists);
         }
 
         // Password handling logic
@@ -202,19 +370,14 @@ public class UserManagementService : IUserManagementService
         }
 
         // Create User in DB
+        var mfaType = await _configService.GetMfaTypeAsync();
         var localUserNew = new User
         {
             KeycloakUserId = Guid.Parse(keycloakUserNew.Id),
             Username = keycloakUserNew.UserName,
-            FirstName = keycloakUserNew.FirstName,
-            LastName = keycloakUserNew.LastName,
-            IsEnabled = keycloakUserNew.Enabled ?? request.Enabled,
+            PhoneNumber = request.PhoneNumber,
             IsAdmin = request.IsAdmin,
-            Email = keycloakUserNew.Email ?? request.Email,
-            PhoneNumber = request.PhoneNumber ?? string.Empty,                       
-            PhoneVerified = false,
-            MfaType = mfaType,
-            EmailVerified = keycloakUserNew.EmailVerified ?? request.EmailVerified,
+            MfaType = Enum.Parse<MfaType>(mfaType.Data ?? "None"),
             CreatedAt = DateTime.UtcNow
         };
         try
@@ -278,7 +441,7 @@ public class UserManagementService : IUserManagementService
             return _errors.Fail<UserProfileDto>(keycloakUserNew.ErrorCode ?? ErrorCodes.AUTH.GenericUnexpected);
         }
 
-        // Send Email to user  
+        // Send Email with reset link to user  
         var result = await _passwordResetService.SendResetLinkAsync(request.Email);
         if (!result.Success)
         {
@@ -292,6 +455,8 @@ public class UserManagementService : IUserManagementService
     {
         if (!Guid.TryParse(request.Id, out var userId))
             return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UserIdNotValid);
+
+        request.Username = request.Username?.ToLower() ?? null;       
 
         // Check if user exists
         var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(request.Id);
@@ -328,12 +493,7 @@ public class UserManagementService : IUserManagementService
             if (localUser != null)
             {
                 localUser.Username = request.Username ?? localUser.Username;
-                localUser.FirstName = request.FirstName ?? localUser.FirstName;
-                localUser.LastName = request.LastName ?? localUser.LastName;
-                localUser.Email = request.Email ?? localUser.Email;
-                localUser.IsEnabled = request.Enabled ?? localUser.IsEnabled;
                 localUser.PhoneNumber = request.PhoneNumber ?? localUser.PhoneNumber;
-                localUser.IsAdmin = request.IsAdmin ?? localUser.IsAdmin;
                 localUser.ModifiedAt = DateTime.UtcNow;
                 await _userRepository.UpdateAsync(localUser);
             }
@@ -351,7 +511,7 @@ public class UserManagementService : IUserManagementService
             };
             await _keycloakClientUser.UpdateUserAsync(rollbackKeycloakDto);
 
-            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UpdateDbRolledBack);
+            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UpdateInDBFailed);
         }
 
         // Update password if provided
@@ -365,7 +525,7 @@ public class UserManagementService : IUserManagementService
         }
 
         // Handle admin role assignment/removal
-        var rolesResult = await _roleManagementService.GetUserRolesAsync(request.Username ?? keycloakUser.UserName ?? string.Empty);
+        var rolesResult = await _roleManagementService.GetUserRolesAsync(request.Username ?? keycloakUser.UserName);
         var hasAdminRole = rolesResult.Success && rolesResult.Data?.Any(r => r.RoleName == AdminRoleName) == true;
 
         if (request.IsAdmin == true && !hasAdminRole)
@@ -379,7 +539,7 @@ public class UserManagementService : IUserManagementService
                 return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.AssignAdminOnUpdateFailed);
             }
         }
-        else if (!request.IsAdmin == true && hasAdminRole)
+        else if (request.IsAdmin == false && hasAdminRole)
         {
             var removeResult = await _roleManagementService.RemoveRolesFromUserAsync(
                 request.Username ?? keycloakUser.UserName ?? string.Empty,
@@ -393,38 +553,173 @@ public class UserManagementService : IUserManagementService
 
         var updatedKeycloakUser = await _keycloakClientUser.GetUserByIdAsync(request.Id);
 
+        if (updatedKeycloakUser == null) 
+        {
+            return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UserIdNotFound);
+        }
+
         // Map to UserProfileDto
         UserProfileDto profile = MapToUserProfile(updatedKeycloakUser, localUser);
 
         return Result<UserProfileDto>.Ok(profile, $"User {profile.UserName} updated successfully.");
     }
 
-    public async Task<Result<bool>> DeleteUserAsync(string userId)
+    public async Task<Result<bool>> DeleteUsersAsync(List<IdDto> userIds)
     {
-        // Check if user exists
-        var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userId);
-        if (keycloakUser == null)
+        var failedIds = new List<string>();
+
+        foreach (var userIdDto in userIds)
+        {
+            // Check if user exists
+            var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userIdDto.Id);
+            if (keycloakUser == null)
+            {
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }
+
+            // Delete user from Keycloak
+            var result = await _keycloakClientUser.DeleteUserAsync(keycloakUser.Id);
+            if (!result)
+            {
+                return _errors.Fail<bool>(ErrorCodes.AUTH.DeleteInKeycloakFailed);
+            }
+
+            // Delete user from auth DB if exists
+            var localUser = await _userRepository.GetByKeycloakUserIdAsync(Guid.Parse(keycloakUser.Id));
+            if (localUser != null)
+            {
+                await _userRepository.DeleteAsync(localUser);
+            }
+        }
+
+        if (failedIds.Count > 0)
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.DeleteTargetNotFound);
         }
 
-        // Delete user from Keycloak
-        var result = await _keycloakClientUser.DeleteUserAsync(keycloakUser.Id);
-        if (!result)
+        return Result<bool>.Ok(data: true, message: "Users deleted successfully.");
+    }
+
+    public async Task<Result<bool>> FakeDeleteUsersAsync(List<IdDto> userIds)
+    {
+        var failedIds = new List<string>();
+
+        foreach (var userIdDto in userIds)
         {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.DeleteInKeycloakFailed);
+            // Check if user exists
+            var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userIdDto.Id);
+            if (keycloakUser == null)
+            {
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }
+
+            var updateDto = new KeycloakUserDto
+            {
+                Id = userIdDto.Id,
+                Enabled = false
+            };
+
+            // Fake Delete (i.e. Disabled) user in Keycloak
+            var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
+            if (!keycloakUpdateResult.Success)
+            {
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }
+
+            // Fake Delete (i.e. is_deleted = true) user in db
+            var localUser = await _userRepository.GetByKeycloakUserIdAsync(Guid.Parse(keycloakUser.Id));
+            if (localUser != null)
+            {
+                localUser.IsDeleted = true;
+                await _userRepository.UpdateAsync(localUser);
+            }
         }
 
-        // Delete user from auth DB if exists
-        var localUser = await _userRepository.GetByKeycloakUserIdAsync(Guid.Parse(keycloakUser.Id));
-        if (localUser != null)
+        if (failedIds.Count > 0)
         {
-            await _userRepository.DeleteAsync(localUser);
+            return _errors.Fail<bool>(ErrorCodes.AUTH.DeleteTargetNotFound);
         }
 
-        return Result<bool>.Ok(data: true, message: $"User {userId} deleted successfully.");
+        return Result<bool>.Ok(data: true, message: "Users Fake deleted successfully.");
     }
     
+    public async Task<Result<bool>> EnableUsersAsync(List<IdDto> userIds)
+    {
+        var failedIds = new List<string>();
+
+        foreach (var userIdDto in userIds)
+        {
+            // Check if user exists
+            var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userIdDto.Id);
+            if (keycloakUser == null)
+            {
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }
+
+            var updateDto = new KeycloakUserDto
+            {
+                Id = userIdDto.Id,
+                Enabled = true
+            };
+
+            // Enable user in Keycloak
+            var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
+            if (!keycloakUpdateResult.Success)
+            {
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }
+        }
+
+        if (failedIds.Count > 0)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
+        }
+
+        return Result<bool>.Ok(data: true, message: "Users enabled successfully.");
+    }
+
+    public async Task<Result<bool>> DisableUsersAsync(List<IdDto> userIds)
+    {
+        var failedIds = new List<string>();
+
+        foreach (var userIdDto in userIds)
+        {
+            // Check if user exists
+            var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userIdDto.Id);
+            if (keycloakUser == null)
+            {
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }
+
+            var updateDto = new KeycloakUserDto
+            {
+                Id = userIdDto.Id,
+                Enabled = false
+            };
+
+            // Disable user in Keycloak
+            var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
+            if (!keycloakUpdateResult.Success)
+            {                
+                failedIds.Add(userIdDto.Id);
+                continue;
+            }            
+        }
+
+        if (failedIds.Count > 0)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
+        }        
+
+        return Result<bool>.Ok(data: true, message: "Users disabled successfully.");
+    }
+   
     public async Task<Result<IDictionary<string, string[]>>> GetUserAttributesAsync(string username)
     {
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
@@ -438,22 +733,22 @@ public class UserManagementService : IUserManagementService
         return Result<IDictionary<string, string[]>>.Ok(attributes);
     }
 
-    public async Task<Result<IDictionary<string, IDictionary<string, string[]>>>> GetUsersAttributesAsync(List<string> userIds)
+    public async Task<Result<IDictionary<string, IDictionary<string, string[]>>>> GetUsersAttributesAsync(List<UserIdDto> userIds)
     {
         var response = new Dictionary<string, IDictionary<string, string[]>>(StringComparer.OrdinalIgnoreCase);
         var notFound = new List<string>();
 
-        foreach (var userId in userIds)
+        foreach (var idDto in userIds)
         {
-            var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(userId);
+            var keycloakUser = await _keycloakClientUser.GetUserByIdAsync(idDto.UserId);
             if (keycloakUser == null)
             {
-                notFound.Add(userId);
+                notFound.Add(idDto.UserId);
                 continue;
             }
 
             var attributes = await _keycloakClientUser.GetUserAttributesAsync(keycloakUser.Id);
-            response[userId] = attributes;
+            response[idDto.UserId] = attributes;
         }
 
         if (notFound.Count == userIds.Count)
@@ -504,107 +799,14 @@ public class UserManagementService : IUserManagementService
         }
 
         return Result<bool>.Ok(data: true, message: $"Attribute {key} deleted successfully.");
-    }
+    }      
 
-    public async Task<Result<bool>> ResetPasswordAndVerifyEmailAsync(PasswordResetDto request)
-    {
-        var result = await _passwordResetService.ResetPasswordAndVerifyEmailAsync(request.Token, request.NewPassword);
-        if (!result.Success)
-        {
-            return _errors.Fail<bool>(result.ErrorCode ?? string.Empty);
-        }
-        return Result<bool>.Ok(data: true, result.Message);
-    }
-
-    public async Task<Result<bool>> EnableMfaAsync(string username, MfaType mfaType)
-    {
-        var dbUser = await _userRepository.GetByUsernameAsync(username);
-        if (dbUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
-        }
-        
-        dbUser.MfaType = mfaType;
-        if (mfaType == MfaType.Email)
-        {
-            dbUser.EmailVerified = true;
-        }
-
-        await _userRepository.UpdateAsync(dbUser);
-
-        return Result<bool>.Ok(data: true, message: "Mfa Set In DB");
-    }
-
-    public async Task<Result<bool>> DisableMfaAsync(string username)
-    {
-        var dbUser = await _userRepository.GetByUsernameAsync(username);
-        if (dbUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
-        }
-        
-        dbUser.MfaType = MfaType.None;
-        await _userRepository.UpdateAsync(dbUser);
-
-        return Result<bool>.Ok(data: true, message: "Mfa Set In DB");
-    }
-
-    public async Task<Result<bool>> EmailVerifiedAsync(string email)
-    {
-        var keycloakUser = await _keycloakClientUser.GetUserByEmailAsync(email);
-        if (keycloakUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
-        }
-
-        var updateDto = new KeycloakUserDto
-        {
-            Id = keycloakUser.Id,
-            EmailVerified = true,
-        };
-
-        var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
-        if (!keycloakUpdateResult.Success)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UpdateInKeycloakFailed);
-        }
-
-        var dbUser = await _userRepository.GetByEmailAsync(email);
-        if (dbUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
-        }
-
-        dbUser.EmailVerified = true;
-        await _userRepository.UpdateAsync(dbUser);
-
-        return Result<bool>.Ok(data: true, message: "Email Verified.");
-    }
-
-    public async Task<Result<bool>> PhoneVerifiedAsync(string phoneNumber)
-    {
-        var dbUser = await _userRepository.GetByPhoneNumberAsync(phoneNumber);
-        if (dbUser == null)
-        {
-            return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInDB);
-        }
-
-        dbUser.PhoneVerified = true;
-        await _userRepository.UpdateAsync(dbUser);
-
-        return Result<bool>.Ok(data: true, message: "Phone Verified.");
-    }
-
-    private static UserProfileDto MapToUserProfile(KeycloakUser? keycloakUser, User? localUser)
-    {
-        if (keycloakUser == null)
-        {
-            throw new ArgumentNullException(nameof(keycloakUser), "KeycloakUser cannot be null.");
-        }
-
+    private static UserProfileDto MapToUserProfile(KeycloakUser keycloakUser, 
+        User? localUser, 
+        List<RoleProfileDto>? roles = null)
+    {               
         var profile = new UserProfileDto
         {
-            // keycloak properties  
             Id = keycloakUser.Id,
             UserName = keycloakUser.UserName,
             Enabled = keycloakUser.Enabled,
@@ -612,12 +814,14 @@ public class UserManagementService : IUserManagementService
             FirstName = keycloakUser.FirstName,
             LastName = keycloakUser.LastName,
             Email = keycloakUser.Email,
-            // Local properties  
-            IsAdmin = localUser?.IsAdmin ?? false,
             PhoneNumber = localUser?.PhoneNumber,
-            PhoneVerified = localUser?.PhoneVerified ?? false,            
+            Deleted = localUser?.IsDeleted ?? false,
+            IsAdmin = localUser?.IsAdmin ?? false,            
             MfaMethod = localUser?.MfaType.ToString().ToLower(),
-            CreatedAt = localUser?.CreatedAt ?? keycloakUser.CreatedAt
+            CreatedAt = localUser?.CreatedAt ?? keycloakUser.CreatedAt,
+            ModifiedAt = localUser?.ModifiedAt,
+            Roles = roles ?? new List<RoleProfileDto>(),
+            Attributes = keycloakUser.Attributes
         };
         return profile;
     }
