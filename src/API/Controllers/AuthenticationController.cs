@@ -16,7 +16,7 @@ public class AuthenticationController : ControllerBase
     public AuthenticationController(IAuthenticationService authenticationService, IConfiguration configuration)
     {
         _authenticationService = authenticationService;
-        _configuration = configuration; 
+        _configuration = configuration;
     }
 
     [HttpPost("login")]
@@ -38,44 +38,32 @@ public class AuthenticationController : ControllerBase
             return Accepted(result);
         }
 
-        if (string.IsNullOrEmpty(result?.Data?.AccessToken) || string.IsNullOrEmpty(result?.Data?.RefreshToken))
+        if (string.IsNullOrEmpty(result.Data?.AccessToken) || string.IsNullOrEmpty(result.Data?.RefreshToken))
         {
             return Ok(result);
         }
 
-        Response.Cookies.Append("refresh_token", result.Data.RefreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Path = "/",
-            Expires = DateTimeOffset.UtcNow.AddHours(CookieConstants.RefreshTokenCookieExpirationHours)
-        });
+        AppendRefreshTokenCookie(result.Data.RefreshToken);
 
         return Ok(result);
     }
 
     [HttpGet("oauth2callback")]
     public async Task<IActionResult> OAuth2callback([FromQuery] string code)
-    {      
-        var entraIdRedirectUrl = _configuration["FRONTEND_ENTRAID_REDIRECTURI"] 
+    {
+        var entraIdRedirectUrl = _configuration["FRONTEND_ENTRAID_REDIRECTURI"]
             ?? throw new ArgumentNullException(nameof(_configuration), "FRONTEND_ENTRAID_REDIRECTURI is empty.");
 
         var result = await _authenticationService.OAuth2CallbackAsync(code);
-        if (!string.IsNullOrEmpty(result?.Data?.AccessToken))
+
+        if (!string.IsNullOrEmpty(result?.Data?.AccessToken) &&
+            !string.IsNullOrEmpty(result?.Data?.RefreshToken))
         {
-            Response.Cookies.Append("refresh_token", result?.Data?.RefreshToken!, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Strict,
-                Path = "/",
-                Expires = DateTime.UtcNow.AddMinutes(CookieConstants.RefreshTokenCookieExpirationHours)
-            });
+            AppendRefreshTokenCookie(result.Data.RefreshToken);
         }
 
         return Redirect(entraIdRedirectUrl);
-    }    
+    }
 
     [HttpPost("refresh")]
     public async Task<IActionResult> RefreshToken()
@@ -90,6 +78,11 @@ public class AuthenticationController : ControllerBase
         if (!result.Success)
         {
             return Accepted(result);
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Data?.Refresh_token))
+        {
+            AppendRefreshTokenCookie(result.Data.Refresh_token);
         }
 
         return Ok(result);
@@ -134,5 +127,17 @@ public class AuthenticationController : ControllerBase
         }
 
         return null;
+    }
+
+    private void AppendRefreshTokenCookie(string refreshToken)
+    {
+        Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Strict,
+            Path = "/",
+            Expires = DateTimeOffset.UtcNow.AddHours(CookieConstants.RefreshTokenCookieExpirationHours)
+        });
     }
 }

@@ -220,6 +220,9 @@ public class EmailVerificationService : IEmailVerificationService
     public async Task<Result<bool>> VerifyMfaCodeAsync(string email, string code)
     {
         var cachedCode = await _emailCache.GetCodeAsync(email);
+
+        _logger.LogInformation("Getting Code from cache {code}", cachedCode);
+
         if (string.IsNullOrWhiteSpace(cachedCode))
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.VerifyEmailTokenInValid);
@@ -229,9 +232,12 @@ public class EmailVerificationService : IEmailVerificationService
         _logger.LogInformation("Is code Valid: {isValid}", isValid);
 
         if (!isValid)
-        {            
+        {
+            _logger.LogInformation("Message Returned is {message} ", ErrorCodes.AUTH.InvalidEmailCode);
             return _errors.Fail<bool>(ErrorCodes.AUTH.InvalidEmailCode);
-        }        
+        }
+
+        _logger.LogInformation("Code removed from cache");
 
         await _emailCache.RemoveCodeAsync(email);
 

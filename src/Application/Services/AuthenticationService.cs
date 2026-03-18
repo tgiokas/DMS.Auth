@@ -134,9 +134,15 @@ public class AuthenticationService : IAuthenticationService
             return _errors.Fail<RefreshResponseDto>(ErrorCodes.AUTH.RefreshFailed);
         }
 
+        if (string.IsNullOrWhiteSpace(tokenResponse.Refresh_token))
+        {
+            return _errors.Fail<RefreshResponseDto>(ErrorCodes.AUTH.RefreshFailed);
+        }
+
         return Result<RefreshResponseDto>.Ok(new RefreshResponseDto
         {
             Access_token = tokenResponse.Access_token,
+            Refresh_token = tokenResponse.Refresh_token,
             Expires_in = tokenResponse.Expires_in
         });
     }

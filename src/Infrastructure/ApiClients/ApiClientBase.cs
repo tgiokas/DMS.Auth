@@ -1,10 +1,10 @@
 ﻿using System.Diagnostics;
 using System.Net;
-using System.Net.Http;
+
 using Microsoft.Extensions.Logging;
 
 using Polly;
-using Polly.Retry;
+using Authentication.Infrastructure.Helpers.Redaction;
 
 namespace Authentication.Infrastructure.ApiClients;
 
@@ -27,7 +27,15 @@ public abstract class ApiClientBase
 
     protected async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
     {
-        string requestBody = request.Content != null ? await request.Content.ReadAsStringAsync(cancellationToken) : string.Empty;
+        
+        string requestBodyRaw = request.Content != null ? await request.Content.ReadAsStringAsync(cancellationToken) : string.Empty;
+
+        string requestBody = requestBodyRaw;
+        if (request.Content?.Headers.ContentType?.MediaType?.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            requestBody = FormUrlEncodedRedactor.TryRedact(requestBodyRaw);
+        }
+
         var sw = Stopwatch.StartNew();
 
         HttpResponseMessage response;
@@ -47,7 +55,10 @@ public abstract class ApiClientBase
         }
 
         sw.Stop();
-        string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        string responseBodyRaw = await response.Content.ReadAsStringAsync(cancellationToken);
+        string responseBody = JsonRedactor.TryRedact(responseBodyRaw);
+        
         int statusCode = (int)response.StatusCode;
         LogLevel logLevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
 
@@ -58,8 +69,16 @@ public abstract class ApiClientBase
     }
 
     protected async Task<HttpResponseMessage> SendRequestRetryAsync(HttpRequestMessage request, CancellationToken cancellationToken = default)
-    {
-        string requestBody = request.Content != null ? await request.Content.ReadAsStringAsync(cancellationToken) : string.Empty;
+    {      
+
+        string requestBodyRaw = request.Content != null ? await request.Content.ReadAsStringAsync(cancellationToken) : string.Empty;
+
+        string requestBody = requestBodyRaw;
+        if (request.Content?.Headers.ContentType?.MediaType?.Equals("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            requestBody = FormUrlEncodedRedactor.TryRedact(requestBodyRaw);
+        }
+
         var sw = Stopwatch.StartNew();
 
         // Define a retry policy
@@ -102,7 +121,10 @@ public abstract class ApiClientBase
         }
 
         sw.Stop();
-        string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        string responseBodyRaw = await response.Content.ReadAsStringAsync(cancellationToken);
+        string responseBody = JsonRedactor.TryRedact(responseBodyRaw);
+
         int statusCode = (int)response.StatusCode;
         LogLevel logLevel = statusCode > 499 ? LogLevel.Error : LogLevel.Information;
 

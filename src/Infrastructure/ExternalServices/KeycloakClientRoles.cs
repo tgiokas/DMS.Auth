@@ -75,6 +75,38 @@ public class KeycloakClientRole : KeycloakApiClient, IKeycloakClientRole
         return JsonSerializer.Deserialize<List<KeycloakRole>>(jsonResponse);
     }
 
+    public async Task<List<KeycloakUser>?> GetUsersByRoleAsync(string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+        {
+            return null;
+        }
+
+        await GetClientUuidAsync();
+
+        var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/clients/{_clientUuid}/roles/{Uri.EscapeDataString(roleName)}/users";
+        var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
+
+        var response = await SendRequestAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Failed to fetch users for client role {RoleName} in Keycloak: {Response}", roleName, await response.Content.ReadAsStringAsync());
+            return null;
+        }
+
+        var jsonResponse = await response.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(jsonResponse))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<List<KeycloakUser>>(jsonResponse, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+    }
+
     public async Task<KeycloakRole?> CreateRoleAsync(string roleName, string roleDescr)
     {
         await GetClientUuidAsync();

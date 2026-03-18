@@ -2,19 +2,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-using Community.Microsoft.Extensions.Caching.PostgreSql;
 using Serilog;
 
 using Authentication.Api.Middlewares;
 using Authentication.Api.Services;
 using Authentication.Application;
-using Authentication.Application.Errors;
-using Authentication.Application.Interfaces;
 using Authentication.Infrastructure;
-using Authentication.Infrastructure.Caching;
 using Authentication.Infrastructure.Database;
-using Authentication.Infrastructure.ExternalServices;
-using Authentication.Infrastructure.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,50 +25,13 @@ Log.Information("Configuration is starting...");
 
 builder.Host.UseSerilog();
 
-// Add memory cache
-builder.Services.AddMemoryCache();
-
-builder.Services.AddScoped<ITotpCache, TotpCache>();
-builder.Services.AddScoped<IEmailCache, EmailCache>();
-builder.Services.AddScoped<ISmsCache, SmsCache>();
-builder.Services.AddScoped<IPasswordResetCache, PasswordResetCache>();
-
-builder.Services.AddHttpClient<IKeycloakClientAuthentication, KeycloakClientAuthentication>();
-builder.Services.AddHttpClient<IKeycloakClientUser, KeycloakClientUser>();
-builder.Services.AddHttpClient<IKeycloakClientRole, KeycloakClientRole>();
-
 // Add Application services
 builder.Services.AddApplicationServices();
 
-// Register Database Context
-builder.Services.AddDatabaseServices(builder.Configuration, "postgresql");
-
-// Register Kafka-based SMS sender
-builder.Services.AddSingleton<ISmsSender, KafkaSmsSender>();
-
-// Register Kafka-based Email sender
-builder.Services.AddSingleton<IEmailSender, KafkaEmailSender>();
-
-builder.Services.AddSingleton<IMessagePublisher, KafkaPublisher>();
-
-builder.Services.AddScoped<IAuthLockoutService, AuthLockoutService>();
-
-builder.Services.AddDistributedPostgreSqlCache(options =>
-{
-    options.ConnectionString = builder.Configuration["AUTH_DB_CONNECTION"];
-    options.SchemaName = "public";
-    options.TableName = "CacheEntries";
-});
+// Add Infrastructure Services 
+builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
 
 builder.Services.AddSingleton<KeycloakRoleMapper>();
-
-// Error Catalog Path
-var path = Path.Combine(builder.Environment.ContentRootPath, "errors.json");
-if (!File.Exists(path))
-    throw new FileNotFoundException($"errors.json not found at: {path}");
-Log.Information("Using error catalog at: {Path}", path);
-var errorcat = ErrorCatalog.LoadFromFile(path);
-builder.Services.AddSingleton<IErrorCatalog>(errorcat);
 
 builder.Services.AddControllers();
 
@@ -121,8 +78,6 @@ builder.Services.AddCors(options =>
         policyBuilder.AllowAnyHeader();
     });
 });
-
-// builder.WebHost.UseUrls("http://0.0.0.0:80");
 
 if (builder.Environment.IsDevelopment())
 {

@@ -8,6 +8,7 @@ public interface IKeycloakClientRole
     Task<KeycloakRole?> GetRoleByNameAsync(string rolename);
     Task<KeycloakRole?> GetRoleByIdAsync(string roleId);
     Task<List<KeycloakRole>?> GetUserRolesAsync(string username);
+    Task<List<KeycloakUser>?> GetUsersByRoleAsync(string roleName);
     Task<KeycloakRole?> CreateRoleAsync(string roleName, string roleDescr);
     Task<KeycloakRole?> UpdateRoleAsync(RoleUpdateDto roleDto);
     Task<bool> DeleteRoleAsync(string roleName);
