@@ -10,7 +10,7 @@ using Authentication.Application.Interfaces;
 using Authentication.Domain.Interfaces;
 using Authentication.Infrastructure.Database;
 using Authentication.Infrastructure.Repositories;
-using Authentication.Infrastructure.Caching; 
+using Authentication.Infrastructure.Caching;
 using Authentication.Infrastructure.ExternalServices;
 using Authentication.Infrastructure.Messaging;
 

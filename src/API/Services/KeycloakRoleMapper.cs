@@ -15,6 +15,7 @@ public class KeycloakRoleMapper
         var realmAccessClaim = identity.FindFirst("realm_access");
         if (realmAccessClaim != null)
         {
+
             try
             {
                 using var doc = JsonDocument.Parse(realmAccessClaim.Value);

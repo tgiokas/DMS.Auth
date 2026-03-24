@@ -60,6 +60,17 @@ public class RoleController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("getusersbyroles")]
+    public async Task<IActionResult> GetUsersByRole(List<RoleDto> request)
+    {
+        var result = await _roleManagementService.GetUsersByRoleAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }    
+
     [HttpPost("create")]
     public async Task<IActionResult> CreateRole(RoleDto request)
     {

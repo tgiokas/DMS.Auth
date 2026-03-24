@@ -99,6 +99,59 @@ public class RoleManagementService : IRoleManagementService
         return Result<List<RoleProfileDto>>.Ok(roleDtos);
     }
 
+    public async Task<Result<List<UserProfileDto>>> GetUsersByRoleAsync(List<RoleDto> roles)
+    {
+        if (roles == null || roles.Count == 0)
+            return _errors.Fail<List<UserProfileDto>>(ErrorCodes.AUTH.RolesNotFound);
+
+        var allUsers = new Dictionary<string, UserProfileDto>();
+
+        foreach (var roleDto in roles)
+        {
+            var role = await _keycloakClientRole.GetRoleByNameAsync(roleDto.RoleName);
+            if (role == null)
+                continue;
+
+            var keycloakUsers = await _keycloakClientRole.GetUsersByRoleAsync(roleDto.RoleName);
+            if (keycloakUsers == null)
+                continue;
+
+            var roleProfile = new RoleProfileDto
+            {
+                Id = role.Id,
+                RoleName = role.Name,
+                Description = role.Description
+            };
+
+            foreach (var u in keycloakUsers)
+            {
+                if (!allUsers.ContainsKey(u.Id))
+                {
+                    allUsers[u.Id] = new UserProfileDto
+                    {
+                        Id = u.Id,
+                        UserName = u.UserName,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email,
+                        EmailVerified = u.EmailVerified,
+                        Enabled = u.Enabled,
+                        CreatedAt = u.CreatedAt,
+                        Attributes = u.Attributes,
+                        Roles = new List<RoleProfileDto> { roleProfile }
+                    };
+                }
+            }
+        }
+
+        if (allUsers.Count == 0)
+        {
+            return _errors.Fail<List<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
+        }
+
+        return Result<List<UserProfileDto>>.Ok(allUsers.Values.ToList());
+    }
+
     public async Task<Result<RoleProfileDto>> CreateRoleAsync(RoleDto roleDto)
     {
         // Check if role exists
