@@ -7,6 +7,7 @@ using Serilog;
 using Authentication.Api.Middlewares;
 using Authentication.Api.Services;
 using Authentication.Application;
+using Authentication.Application.Configuration;
 using Authentication.Infrastructure;
 using Authentication.Infrastructure.Database;
 
@@ -31,6 +32,9 @@ builder.Services.AddApplicationServices();
 // Add Infrastructure Services 
 builder.Services.AddInfrastructureServices(builder.Configuration, "postgresql");
 
+// Bind KeycloakSettings early so we can use it for JWT config
+var keycloakSettings = KeycloakSettings.BindFromConfiguration(builder.Configuration);
+
 builder.Services.AddSingleton<KeycloakRoleMapper>();
 
 builder.Services.AddControllers();
@@ -39,20 +43,17 @@ builder.Services.AddControllers();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["KEYCLOAK_AUTHORITY"] ?? builder.Configuration["Keycloak:Authority"];
-        options.Audience = builder.Configuration["KEYCLOAK_CLIENTID"] ??builder.Configuration["Keycloak:ClientId"];
-        options.RequireHttpsMetadata = bool.Parse(builder.Configuration["Keycloak:RequireHttpsMetadata"] ?? "false");
+        options.Authority = keycloakSettings.Authority;
+        options.Audience = keycloakSettings.ClientId;
+        options.RequireHttpsMetadata = keycloakSettings.RequireHttpsMetadata;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["KEYCLOAK_AUTHORITY"] ?? builder.Configuration["Keycloak:Authority"],            
+            ValidIssuer = keycloakSettings.Authority,
             ValidateAudience = true,
-            ValidAudiences = [builder.Configuration["KEYCLOAK_CLIENTID"] ?? builder.Configuration["Keycloak:ClientId"]],
+            ValidAudiences = [keycloakSettings.ClientId],
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            //RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
-            //RoleClaimType = "realm_access.roles",
-            //NameClaimType = "preferred_username"
         };
 
         // Extract roles from `realm_access` JSON object using System.Text.Json
@@ -65,7 +66,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 return Task.CompletedTask;
             }
         };
-
     });
 
 // Add CORS policy

@@ -1,9 +1,10 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Infrastructure.Constants;
 
@@ -11,29 +12,30 @@ namespace Authentication.Infrastructure.ApiClients;
 
 public abstract class KeycloakApiClient : ApiClientBase
 {
-    protected readonly IConfiguration? _configuration;
-    private readonly IDistributedCache _cache;    
+    private readonly IDistributedCache _cache;
     protected readonly string _keycloakServerUrl;
     protected readonly string _realm;
     protected readonly string _clientId;
     protected readonly string _clientSecret;
     protected readonly string _authority;
     protected readonly string _redirectUri;
-    protected string? _clientUuid;    
+    protected string? _clientUuid;
     private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
-    { 
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    protected KeycloakApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<KeycloakApiClient> logger, IDistributedCache cache)
+    protected KeycloakApiClient(HttpClient httpClient, IOptions<KeycloakSettings> keycloakOptions, ILogger<KeycloakApiClient> logger, IDistributedCache cache)
       : base(httpClient, logger)
     {
-        _keycloakServerUrl = configuration["KEYCLOAK_BASEURL"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_BASEURL is null.");
-        _realm = configuration["KEYCLOAK_REALM"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_REALM is null.");
-        _clientId = configuration["KEYCLOAK_CLIENTID"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_CLIENTID is null.");
-        _clientSecret = configuration["KEYCLOAK_CLIENTSECRET"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_CLIENTSECRET is null.");
-        _authority = configuration["KEYCLOAK_AUTHORITY"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_AUTHORITY is null.");
-        _redirectUri = configuration["KEYCLOAK_REDIRECTURI"] ?? throw new ArgumentNullException(nameof(configuration), "KEYCLOAK_REDIRECTURI is null.");
+        var settings = keycloakOptions.Value;
+
+        _keycloakServerUrl = settings.BaseUrl;
+        _realm = settings.Realm;
+        _clientId = settings.ClientId;
+        _clientSecret = settings.ClientSecret;
+        _authority = settings.Authority;
+        _redirectUri = settings.RedirectUri;
 
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     }

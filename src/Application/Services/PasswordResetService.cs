@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
-
+﻿using Microsoft.Extensions.Options;
+ 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
@@ -12,7 +13,6 @@ public class PasswordResetService : IPasswordResetService
     private readonly IKeycloakClientUser _keycloakClientUser;
     private readonly IEmailSender _emailSender;    
     private readonly IPasswordResetCache _passwordResetCache;
-    private readonly IConfiguration _configuration;
     private readonly IErrorCatalog _errors;
     private readonly string _passwordResetUrl;
 
@@ -20,16 +20,14 @@ public class PasswordResetService : IPasswordResetService
         IKeycloakClientUser keycloakClient,
         IEmailSender emailSender,
         IPasswordResetCache cache,
-        IConfiguration configuration,
+        IOptions<AuthSettings> authOptions,
         IErrorCatalog errors)
     {
         _keycloakClientUser = keycloakClient;
         _emailSender = emailSender;
         _passwordResetCache = cache;
-        _configuration = configuration;
         _errors = errors;
-
-        _passwordResetUrl = _configuration["PASSWORD_RESET_URL"] ?? throw new ArgumentNullException(nameof(configuration), "PASSWORD_RESET_URL is empty.");
+        _passwordResetUrl = authOptions.Value.PasswordResetUrl;
     }
 
     public async Task<Result<bool>> SendResetLinkAsync(string email)

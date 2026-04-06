@@ -1,7 +1,7 @@
-﻿using Authentication.Application.Interfaces;
-using Authentication.Application.Services;
+﻿using Microsoft.Extensions.DependencyInjection;
 
-using Microsoft.Extensions.DependencyInjection;
+using Authentication.Application.Interfaces;
+using Authentication.Application.Services;
 
 namespace Authentication.Application;
 

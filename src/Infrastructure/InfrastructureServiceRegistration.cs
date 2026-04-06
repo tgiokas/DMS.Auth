@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Community.Microsoft.Extensions.Caching.PostgreSql;
 using Npgsql;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Interfaces;
@@ -20,8 +22,20 @@ public static class InfrastructureServiceRegistration
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration, string databaseProvider)
     {
+        // Bind KeycloakSettings from env variables
+        var keycloakSettings = KeycloakSettings.BindFromConfiguration(configuration);
+        services.AddSingleton(Options.Create(keycloakSettings));
+
+        // Bind KafkaSettings from env variables
+        var kafkaSettings = KafkaSettings.BindFromConfiguration(configuration);
+        services.AddSingleton(Options.Create(kafkaSettings));
+
+        // Bind AuthSettings from env variables
+        var authSettings = AuthSettings.BindFromConfiguration(configuration);
+        services.AddSingleton(Options.Create(authSettings));
+
         // Add Database Context
-        var connectionString = configuration["AUTH_DB_CONNECTION"];
+        var connectionString = authSettings.DbConnection;
 
         NpgsqlDataSource? dataSource = null;
         if (databaseProvider.Equals("postgresql", StringComparison.OrdinalIgnoreCase))
@@ -90,7 +104,7 @@ public static class InfrastructureServiceRegistration
         // Register Distributed Cache PostgreSql
         services.AddDistributedPostgreSqlCache(options =>
         {
-            options.ConnectionString = configuration["AUTH_DB_CONNECTION"];
+            options.ConnectionString = authSettings.DbConnection;
             options.SchemaName = "public";
             options.TableName = "CacheEntries";
         });

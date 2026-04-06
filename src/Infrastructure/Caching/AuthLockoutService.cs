@@ -1,28 +1,30 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
+
+using Authentication.Application.Configuration;
 using Authentication.Application.Interfaces;
-using Microsoft.Extensions.Configuration;
 
 namespace Authentication.Infrastructure.Caching;
 
 public sealed class AuthLockoutService : IAuthLockoutService
 {
     private readonly IDistributedCache _cache;
-    private readonly IConfiguration _configuration;
 
     // Counts failures
-    private readonly int _maxLoginFailures; 
+    private readonly int _maxLoginFailures;
     // Time window in which failed attempts are counted
     private readonly TimeSpan _failureResetTime;
     // Lock duration (Wait increment in keycloak) applied once MaxLoginFailures is exceeded
     private readonly TimeSpan _lockDuration;
 
-    public AuthLockoutService(IDistributedCache cache, IConfiguration configuration)
+    public AuthLockoutService(IDistributedCache cache, IOptions<AuthSettings> authOptions)
     {
         _cache = cache;
-        _configuration = configuration;
-        _maxLoginFailures = int.Parse(configuration["AUTH_MAX_LOGIN_FAILURES"] ?? throw new ArgumentNullException(nameof(configuration), "AUTH_MAX_LOGIN_FAILURES is null."));
-        _failureResetTime = TimeSpan.FromMinutes(int.Parse(configuration["AUTH_FAILURE_RESET_TIME_MINS"] ?? throw new ArgumentNullException(nameof(configuration), "AUTH_FAILURE_RESET_TIME_MINS is null.")));
-        _lockDuration = TimeSpan.FromMinutes(int.Parse(configuration["AUTH_LOCK_DURATION_MINS"] ?? throw new ArgumentNullException(nameof(configuration), "AUTH_LOCK_DURATION_MINS is null.")));
+        var settings = authOptions.Value;
+
+        _maxLoginFailures = settings.MaxLoginFailures;
+        _failureResetTime = TimeSpan.FromMinutes(settings.FailureResetTimeMins);
+        _lockDuration = TimeSpan.FromMinutes(settings.LockDurationMins);
     }
 
     private static string GetKey(string prefix, string token) => $"{prefix}:{token}";

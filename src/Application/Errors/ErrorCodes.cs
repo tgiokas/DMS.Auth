@@ -65,5 +65,6 @@ public static class ErrorCodes
         public const string InvalidWhitelistValue = "AUTH-058";
         public const string WhitelistValueExists = "AUTH-059";
         public const string TooManyAttempts = "AUTH-060";
+        public const string ErrorInErrorCodes = "AUTH-061";
     }
 }

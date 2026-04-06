@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Interfaces;
 
@@ -9,17 +10,14 @@ namespace Authentication.Infrastructure.Messaging;
 public class KafkaEmailSender : IEmailSender
 {
     private readonly IMessagePublisher _kafkaPublisher;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<KafkaEmailSender> _logger;
     private readonly string _emailChannel;
 
-    public KafkaEmailSender(IMessagePublisher kafkaPublisher, IConfiguration configuration, ILogger<KafkaEmailSender> logger)
+    public KafkaEmailSender(IMessagePublisher kafkaPublisher, IOptions<KafkaSettings> kafkaOptions, ILogger<KafkaEmailSender> logger)
     {
         _kafkaPublisher = kafkaPublisher;
-        _configuration = configuration;
         _logger = logger;
-
-        _emailChannel = _configuration["AUTH_KAFKA_TOPIC"] ?? throw new ArgumentNullException(nameof(configuration), "AUTH_KAFKA_TOPIC is empty."); ;
+        _emailChannel = kafkaOptions.Value.Topic;
     }
 
     public async Task<bool> SendEmailAsync(NotificationEmailDto notification)

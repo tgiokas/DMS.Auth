@@ -1,6 +1,7 @@
 ﻿using System.Linq.Dynamic.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
@@ -16,9 +17,9 @@ public class UserManagementService : IUserManagementService
     private readonly IPasswordResetService _passwordResetService;
     private readonly IKeycloakClientUser _keycloakClientUser;
     private readonly IConfigurationService _configService;
-    private readonly IUserRepository _userRepository;   
+    private readonly IUserRepository _userRepository;
     private readonly IEmailWhitelistRepository _emailWhitelistRepo;
-    private readonly IConfiguration _configuration;
+    private readonly AuthSettings _authSettings;
     private readonly IErrorCatalog _errors;
     private readonly string AdminRoleName = "admin";
 
@@ -27,21 +28,21 @@ public class UserManagementService : IUserManagementService
         IPasswordResetService passwordResetService,
         IKeycloakClientUser keycloakClientUser,
         IConfigurationService configService,
-        IUserRepository userRepository,        
+        IUserRepository userRepository,
         IEmailWhitelistRepository emailWhitelistRepo,
-        IConfiguration configuration,
+        IOptions<AuthSettings> authOptions,
         IErrorCatalog errors)
     {
         _roleManagementService = roleManagementService;
         _passwordResetService = passwordResetService;
         _keycloakClientUser = keycloakClientUser;
         _configService = configService;
-        _userRepository = userRepository;        
+        _userRepository = userRepository;
         _emailWhitelistRepo = emailWhitelistRepo;
-        _configuration = configuration;
+        _authSettings = authOptions.Value;
         _errors = errors;
     }
-   
+
     public async Task<Result<Dtos.PagedResult<UserProfileDto>>> GetUsersAsync(UserQueryParams queryParams)
     {
         if (queryParams == null)
@@ -309,12 +310,9 @@ public class UserManagementService : IUserManagementService
     }
 
     public async Task<Result<UserProfileDto>> CreateUserAsync(UserCreateDto request)
-    {        
+    {
         // Check email whitelist if enabled
-        var whitelistTypeValue = _configuration["AUTH_EMAILS_WHITELIST"];
-        if (string.IsNullOrWhiteSpace(whitelistTypeValue))
-            throw new ArgumentNullException(nameof(_configuration), "AUTH_EMAILS_WHITELIST is null.");
-
+        var whitelistTypeValue = _authSettings.EmailsWhitelist;
         if (!whitelistTypeValue.Equals("off", StringComparison.CurrentCultureIgnoreCase))
         {
             var isWhitelisted = await _emailWhitelistRepo.IsWhitelistedAsync(request.Email);

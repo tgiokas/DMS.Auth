@@ -38,10 +38,10 @@ public class ErrorCatalog : IErrorCatalog
         if (_map.TryGetValue(code, out var e))
             return new ErrorInfo(code, e.Message);
 
-        const string Fallback = "AUTH-000";
+        const string Fallback = "AUTH-061";
         if (_map.TryGetValue(Fallback, out var f))
             return new ErrorInfo(Fallback, f.Message);
 
-        return new ErrorInfo(code, "An unexpected error occurred.");
+        return new ErrorInfo(code, "Error in errors.json file.");
     }
 }

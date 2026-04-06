@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 using Authentication.Api.Constants;
+using Authentication.Application.Configuration;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Dtos;
 
@@ -11,12 +13,12 @@ namespace Authentication.Api.Controllers;
 public class AuthenticationController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
-    private readonly IConfiguration _configuration;
+    private readonly AuthSettings _authSettings;
 
-    public AuthenticationController(IAuthenticationService authenticationService, IConfiguration configuration)
+    public AuthenticationController(IAuthenticationService authenticationService, IOptions<AuthSettings> authOptions)
     {
         _authenticationService = authenticationService;
-        _configuration = configuration;
+        _authSettings = authOptions.Value;
     }
 
     [HttpPost("login")]
@@ -51,8 +53,7 @@ public class AuthenticationController : ControllerBase
     [HttpGet("oauth2callback")]
     public async Task<IActionResult> OAuth2callback([FromQuery] string code)
     {
-        var entraIdRedirectUrl = _configuration["FRONTEND_ENTRAID_REDIRECTURI"]
-            ?? throw new ArgumentNullException(nameof(_configuration), "FRONTEND_ENTRAID_REDIRECTURI is empty.");
+        var entraIdRedirectUrl = _authSettings.FrontendEntraIdRedirectUri;     
 
         var result = await _authenticationService.OAuth2CallbackAsync(code);
 

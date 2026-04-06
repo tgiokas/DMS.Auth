@@ -3,8 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Interfaces;
 using Authentication.Infrastructure.ApiClients;
@@ -14,10 +15,10 @@ namespace Authentication.Infrastructure.ExternalServices;
 public class KeycloakClientUser : KeycloakApiClient, IKeycloakClientUser
 {
     public KeycloakClientUser(HttpClient httpClient,
-        IConfiguration configuration,
+        IOptions<KeycloakSettings> keycloakOptions,
         ILogger<KeycloakClientUser> logger,
         IDistributedCache cache)
-    : base(httpClient, configuration, logger, cache)
+    : base(httpClient, keycloakOptions, logger, cache)
     {
     }
 

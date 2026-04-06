@@ -1,6 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
@@ -19,28 +20,28 @@ public class AuthenticationService : IAuthenticationService
     private readonly ITotpRepository _secretRepo;
     private readonly IEmailWhitelistRepository _emailWhitelistRepo;
     private readonly ITotpCache _cache;
-    private readonly IConfiguration _configuration;
+    private readonly AuthSettings _authSettings;
     private readonly IErrorCatalog _errors;
 
     public AuthenticationService(
         IKeycloakClientAuthentication keycloakClientAuth,
-        IKeycloakClientUser keycloakClientUser,       
+        IKeycloakClientUser keycloakClientUser,
         IAuthLockoutService authLockout,
         IUserRepository userRepository,
         ITotpRepository secretRepo,
         IEmailWhitelistRepository emailWhitelistRepo,
         ITotpCache cache,
-        IConfiguration configuration,
+        IOptions<AuthSettings> authOptions,
         IErrorCatalog errors)
     {
         _keycloakClientAuth = keycloakClientAuth;
-        _keycloakClientUser = keycloakClientUser; 
+        _keycloakClientUser = keycloakClientUser;
         _authLockout = authLockout;
         _userRepository = userRepository;
         _secretRepo = secretRepo;
         _emailWhitelistRepo = emailWhitelistRepo;
         _cache = cache;
-        _configuration = configuration;
+        _authSettings = authOptions.Value;
         _errors = errors;
     }
 
@@ -177,10 +178,7 @@ public class AuthenticationService : IAuthenticationService
         }
 
         // Check email whitelist if enabled
-        var whitelistTypeValue = _configuration["AUTH_EMAILS_WHITELIST"];
-        if (string.IsNullOrWhiteSpace(whitelistTypeValue))
-            throw new ArgumentNullException(nameof(_configuration), "AUTH_EMAILS_WHITELIST is null.");
-
+        var whitelistTypeValue = _authSettings.EmailsWhitelist;
         if (!whitelistTypeValue.Equals("off", StringComparison.CurrentCultureIgnoreCase))
         {
             var isWhitelisted = await _emailWhitelistRepo.IsWhitelistedAsync(email);

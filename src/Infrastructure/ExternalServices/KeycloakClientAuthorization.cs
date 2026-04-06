@@ -1,20 +1,21 @@
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Interfaces;
 using Authentication.Infrastructure.ApiClients;
 
 namespace Authentication.Infrastructure.ExternalServices;
 
 public class KeycloakClientAuthorization : KeycloakApiClient, IKeycloakClientAuthorization
-{   
-    public KeycloakClientAuthorization(HttpClient httpClient, 
-        IConfiguration configuration, 
-        ILogger<KeycloakClientAuthorization> logger, 
+{
+    public KeycloakClientAuthorization(HttpClient httpClient,
+        IOptions<KeycloakSettings> keycloakOptions,
+        ILogger<KeycloakClientAuthorization> logger,
         IDistributedCache cache)
-       : base(httpClient, configuration, logger, cache)
+       : base(httpClient, keycloakOptions, logger, cache)
     {
     }
 

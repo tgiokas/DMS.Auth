@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
+using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
@@ -9,32 +10,28 @@ using Authentication.Domain.Enums;
 namespace Authentication.Application.Services;
 
 public class EmailVerificationService : IEmailVerificationService
-{   
+{
     private readonly IKeycloakClientUser _keycloakClientUser;
     private readonly IEmailSender _emailSender;
     private readonly IEmailCache _emailCache;
-    private readonly IConfiguration _configuration;
     private readonly IErrorCatalog _errors;
     private readonly ILogger<EmailVerificationService> _logger;
     private readonly string _verificationUrl;
 
-    public EmailVerificationService(       
+    public EmailVerificationService(
         IKeycloakClientUser keycloakClientUser,
         IEmailSender emailSender,
         IEmailCache cache,
-        IConfiguration configuration,
+        IOptions<AuthSettings> authOptions,
         IErrorCatalog errors,
-        ILogger<EmailVerificationService> logger
-        )
-    {        
+        ILogger<EmailVerificationService> logger)
+    {
         _keycloakClientUser = keycloakClientUser;
         _emailSender = emailSender;
         _emailCache = cache;
-        _configuration = configuration;
         _errors = errors;
         _logger = logger;
-
-        _verificationUrl = _configuration["VERIFICATION_URL"] ?? throw new ArgumentNullException(nameof(configuration), "VERIFICATION_URL is empty.");
+        _verificationUrl = authOptions.Value.VerificationUrl;
     }
 
     public async Task<Result<bool>> SendVerificationLinkAsync(string email)
