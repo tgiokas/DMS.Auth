@@ -440,7 +440,7 @@ public class UserManagementService : IUserManagementService
         }
 
         // Send Email with reset link to user  
-        var result = await _passwordResetService.SendResetLinkAsync(request.Email);
+        var result = await _passwordResetService.SendResetLinkAsync(request.Email, EmailTemplateType.InitialPasswordSet);
         if (!result.Success)
         {
             return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.EmailVerificationSendFailed);

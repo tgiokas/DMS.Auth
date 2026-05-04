@@ -32,10 +32,10 @@ public class KeycloakUser
     public DateTime? CreatedAt
     {
         get
-        {           
+        {
             return CreatedTimestamp > 0
                 ? DateTimeOffset.FromUnixTimeMilliseconds(CreatedTimestamp).UtcDateTime
-                : (DateTime?)null;
+                : null;
         }
     }
 }

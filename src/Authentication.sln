@@ -20,7 +20,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Authentication.Application"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Authentication.Api", "API\Authentication.Api.csproj", "{70F3CBF8-5794-4B3A-8FAA-28FF72C9E448}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "..\docker-compose.dcproj", "{13E6DEBD-7A4C-4DFF-B59E-C3E244A7459D}"
+Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "..\docker-compose.dcproj", "{D66BDB12-30FB-4E09-849A-D70169F16E1A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,10 +44,10 @@ Global
 		{70F3CBF8-5794-4B3A-8FAA-28FF72C9E448}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70F3CBF8-5794-4B3A-8FAA-28FF72C9E448}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70F3CBF8-5794-4B3A-8FAA-28FF72C9E448}.Release|Any CPU.Build.0 = Release|Any CPU
-		{13E6DEBD-7A4C-4DFF-B59E-C3E244A7459D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{13E6DEBD-7A4C-4DFF-B59E-C3E244A7459D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{13E6DEBD-7A4C-4DFF-B59E-C3E244A7459D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{13E6DEBD-7A4C-4DFF-B59E-C3E244A7459D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D66BDB12-30FB-4E09-849A-D70169F16E1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D66BDB12-30FB-4E09-849A-D70169F16E1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D66BDB12-30FB-4E09-849A-D70169F16E1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D66BDB12-30FB-4E09-849A-D70169F16E1A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -11,5 +11,6 @@ public interface IEmailCache
     Task StoreCodeAsync(string email, string code, TimeSpan? ttl = null);
     Task<string?> GetCodeAsync(string email);
     Task RemoveCodeAsync(string email);
+    TimeSpan MfaCodeDuration { get; }
 }
 

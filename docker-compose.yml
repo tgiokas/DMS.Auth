@@ -1,110 +1,182 @@
 services:
-
-  # -------------------------------
-  # 1) Keycloak
-  # -------------------------------
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.3.4
     container_name: keycloak
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-
-      # Use Postgres for the Keycloak database:     
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://host.docker.internal:5432/keycloakdb
-      KC_DB_USERNAME: keycloakuser
-      KC_DB_PASSWORD: keycloakpass
-      # "start-dev" runs Keycloak in dev mode, but still uses Postgres instead of the embedded H2  
-      # "start" for production mode
-    command: ["start-dev"]  
+    env_file:
+      - .env
+    command:
+      - start-dev
+      # - start
+      - --import-realm
+      # - --hostname=localhost 
+      # - --hostname-strict=false 
+      # - --https-certificate-file=/opt/keycloak/certs/keycloak.crt 
+      # - --https-certificate-key-file=/opt/keycloak/certs/keycloak.key 
+      # - --https-port=8443 
+      # - --http-enabled=false 
     depends_on:
       - keycloak-db
+    #dev only
     ports:
-      - "8080:8080"
+      - "8085:8080"
     networks:
-      - auth-network
+      - authentication-network
+    labels:
+      - "traefik.enable=true"
+    volumes:
+      - ./exports/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      # - ./certs:/opt/keycloak/certs
 
-  # -------------------------------
-  # 2) Postgres DB for Keycloak
-  # -------------------------------
   keycloak-db:
     image: postgres:15.2
     container_name: keycloak-db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: keycloakuser
-      POSTGRES_PASSWORD: keycloakpass
-      POSTGRES_DB: keycloakdb
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+      POSTGRES_DB: ${KC_DB_POSTGRES_DB}
+    #dev only
     ports:
       - "5432:5432"
     volumes:
-      - ./volumes/keycloak_db_data:/var/lib/postgresql/data    
+      - ./volumes/keycloak_db_data:/var/lib/postgresql/data
     networks:
-      - auth-network
-     
-  # -------------------------------
-  # 3) Postgres DB for Authentication
-  # -------------------------------
+      - authentication-network
+
   auth-db:
     image: postgres:15.2
     container_name: auth-db
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: authuser
-      POSTGRES_PASSWORD: authpass
-      POSTGRES_DB: authdb
+      POSTGRES_USER: ${AUTH_DB_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${AUTH_DB_POSTGRES_DB}
+    #dev only
     ports:
       - "5433:5432"
     volumes:
       - ./volumes/auth_db_data:/var/lib/postgresql/data
     networks:
-      - auth-network
+      - authentication-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${AUTH_DB_POSTGRES_USER:-postgres} -d ${AUTH_DB_POSTGRES_DB:-postgres}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-    # image: mcr.microsoft.com/mssql/server:2022-latest
-    # container_name: auth-db
-    # environment:
-    #   SA_PASSWORD: "YourStrongPassw0rd"
-    #   ACCEPT_EULA: "Y"
-    #   # Additional config can go here
-    # ports:
-    #   - "1433:1433"  # Expose SQL Server on localhost:1433
-    # # If you want a named volume for data persistence:
-    # # volumes:
-    # #   - sql_data:/var/opt/mssql
-
-
-  # -------------------------------
-  # 4) Authentication 
-  # -------------------------------
-  Authentication.api:
-    image: ${DOCKER_REGISTRY-}authapi
+  auth-api:
+    container_name: auth-api
     build:
       context: .
-      dockerfile: src/API/Dockerfile   
-    environment:
-      # .NET environment
-      ASPNETCORE_ENVIRONMENT: "Development"
-
-      # Keycloak config - point the microservice to the internal Keycloak address
-      #KEYCLOAK_URL: "http://keycloak:8080"
-      #KEYCLOAK_REALM: "DMSRealm"
-      #KEYCLOAK_CLIENT_ID: "myclient"
-      #KEYCLOAK_CLIENT_SECRET: "mysecret" # or manage secrets via a safer method
-
-      # Example DB connection string for Postgres
-      #DB_CONNECTION_STRING: "Host=auth-db;Port=5432;Database=authdb;User ID=auth;Password=auth"
-      #DB_CONNECTION_STRING: "Server=sqlserver;Database=authdb;User ID=sa;Password=auth;TrustServerCertificate=True"
-
+      dockerfile: src/API/Dockerfile
+    env_file:
+      - .env
     depends_on:
-      - keycloak
-      - auth-db
+      auth-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started      
+    #dev only
     ports:
-      - "5032:8070"      
+      - "5032:80"
     networks:
-      - auth-network
+      - authentication-network
+    volumes:
+      - ./error-codes/errors.json:/app/errors.json:ro
+      # - ./certs/keycloak.crt:/usr/local/share/ca-certificates/keycloak.crt:ro
+      
+  kafka1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka1
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka1:29093"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,DOCKER://0.0.0.0:19092,CONTROLLER://0.0.0.0:29093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,DOCKER://kafka1:19092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "DOCKER"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    networks:
+      - authentication-network
+    healthcheck:
+      test:
+        [  "CMD",  "kafka-topics",   "--bootstrap-server", "localhost:9092",  "--list",        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - kafka1-data:/var/lib/kafka/data
+      
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8081:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka1:19092
+      - SERVER_PORT=8080
+    depends_on:
+      - kafka1     
+    networks:
+      - authentication-network
+    restart: always 
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false      
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g     
+    networks:
+      - authentication-network
+    # volumes:
+    #   - esdata:/usr/share/elasticsearch/data
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    networks:
+      - authentication-network   
+    depends_on:
+      - elasticsearch
+    restart: always
+
+volumes:    
+    kafka1-data:   
 
 networks:
-  auth-network:
-    driver: bridge  
-
-
+  authentication-network:
+    driver: bridge
+    name: authentication-network
 

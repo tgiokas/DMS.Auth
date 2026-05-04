@@ -180,7 +180,7 @@ public class EmailVerificationService : IEmailVerificationService
         var code = GenerateCode();
         await _emailCache.StoreCodeAsync(email, code);
        
-        var subject = $"MFA email for {email}";
+        var subject = $"Κωδικός Επιβεβαίωσης Εισόδου (MFA) || Login Verification Code (MFA)";
         var message = $"Your mfa code is: {code}";
 
         var emailMessageDto = new NotificationEmailDto
@@ -191,9 +191,10 @@ public class EmailVerificationService : IEmailVerificationService
             Type = EmailTemplateType.MfaCode,
             TemplateParams = new Dictionary<string, string>
             {
-                ["Username"] = email,
-                ["MfaCode"] = code
-            },
+                ["Username"] = user.UserName,
+                ["MfaCode"] = code,
+                ["MfaCodeDuration"] = _emailCache.MfaCodeDuration.Minutes.ToString()
+            }
         };
 
         try

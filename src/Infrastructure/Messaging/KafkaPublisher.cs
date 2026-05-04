@@ -21,17 +21,17 @@ public sealed class KafkaPublisher : IMessagePublisher, IDisposable
 
         var producerConfig = new ProducerConfig
         {
-            BootstrapServers = settings.BootstrapServers,
-            Acks = Enum.Parse<Acks>(settings.Acks),
+            BootstrapServers = settings.BootstrapServers,            
             ReconnectBackoffMs = settings.ReconnectBackoffMs,
             ReconnectBackoffMaxMs = settings.ReconnectBackoffMaxMs,
             SocketConnectionSetupTimeoutMs = settings.SocketConnectionSetupTimeoutMs,
             SocketTimeoutMs = settings.SocketTimeoutMs,
-            MessageSendMaxRetries = settings.MessageSendMaxRetries,
+            
+            EnableIdempotence = true,
+            Acks = Acks.All,
             RetryBackoffMs = settings.RetryBackoffMs,
             RequestTimeoutMs = settings.RequestTimeoutMs,
-            MessageTimeoutMs = settings.MessageTimeoutMs,
-            EnableIdempotence = settings.EnableIdempotence
+            MessageTimeoutMs = settings.MessageTimeoutMs,           
         };
 
         _producer = new ProducerBuilder<string, string>(producerConfig).Build();

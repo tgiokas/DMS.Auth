@@ -1,4 +1,4 @@
-﻿namespace Authentication.Application.Dtos;
+namespace Authentication.Application.Dtos;
 
 public class LoginAttemptCached
 {
@@ -12,4 +12,5 @@ public class LoginAttemptCached
     public required string AccessToken { get; set; }
     public required string RefreshToken { get; set; }
     public required int ExpiresIn { get; set; }
+    public bool RememberMe { get; set; }
 }

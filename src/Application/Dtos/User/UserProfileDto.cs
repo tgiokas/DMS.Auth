@@ -17,7 +17,7 @@ public class UserProfileDto
     [JsonIgnore]
     public bool Deleted { get; set; }
     public string? PhoneNumber { get; set; }
-    public bool IsAdmin { get; set; }    
+    public bool IsAdmin { get; set; }
     public string? MfaMethod { get; set; }
     public DateTime? CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }

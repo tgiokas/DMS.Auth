@@ -15,6 +15,7 @@ public class PasswordResetService : IPasswordResetService
     private readonly IPasswordResetCache _passwordResetCache;
     private readonly IErrorCatalog _errors;
     private readonly string _passwordResetUrl;
+    private readonly string _passwordSetUrl;
 
     public PasswordResetService(
         IKeycloakClientUser keycloakClient,
@@ -28,9 +29,10 @@ public class PasswordResetService : IPasswordResetService
         _passwordResetCache = cache;
         _errors = errors;
         _passwordResetUrl = authOptions.Value.PasswordResetUrl;
+        _passwordSetUrl = authOptions.Value.PasswordSetUrl;
     }
 
-    public async Task<Result<bool>> SendResetLinkAsync(string email)
+    public async Task<Result<bool>> SendResetLinkAsync(string email, EmailTemplateType type)
     {        
         var user = await _keycloakClientUser.GetUserByEmailAsync(email);
         if (user == null)
@@ -42,24 +44,47 @@ public class PasswordResetService : IPasswordResetService
         await _passwordResetCache.StoreTokenAsync(token, new PasswordResetCached
         {
             Email = email,
-            UserId = user.Id
+            UserId = user.Id,
+            Username = user.UserName
         });
 
+        var setUrl = $"{_passwordSetUrl}?token={token}";
         var resetUrl = $"{_passwordResetUrl}?token={token}";
-        var subject = $"Reset Password for {email}";
-        var message = $"Click the link to reset your password: {resetUrl}";       
+
+        string subject;
+        string message;
+        var templateParams = new Dictionary<string, string>
+        {
+            ["Username"] = user.UserName,           
+        };        
+
+        if (type == EmailTemplateType.InitialPasswordSet)
+        {
+            subject = "Επιτυχής Εγγραφή στο Archium || Successful Registration on Archium";
+            message = $"Click the link to Set your password: {resetUrl}";
+
+            templateParams["Firstname"] = user.FirstName ?? string.Empty;
+            templateParams["Lastname"] = user.LastName ?? string.Empty;
+            templateParams["PasswordSetLink"] = setUrl;
+        }
+        else if (type == EmailTemplateType.PasswordReset)
+        {
+            subject = "Αλλαγή / Επαναφορά Κωδικού Πρόσβασης || Password Change / Reset";
+            message = $"Click the link to reset your password: {resetUrl}";
+            templateParams["PasswordResetLink"] = resetUrl;
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(type), $"Unsupported email type: {type}");
+        }
 
         var emailMessageDto = new NotificationEmailDto
         {
             Recipient = email,
             Subject = subject,
             Message = message,
-            Type = EmailTemplateType.PasswordReset,            
-            TemplateParams = new Dictionary<string, string>
-            {
-                ["Username"] = email,
-                ["PasswordResetLink"] = resetUrl
-            }
+            Type = type,
+            TemplateParams = templateParams
         };
 
         try
@@ -78,7 +103,7 @@ public class PasswordResetService : IPasswordResetService
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.EmailVerificationSendFailed);
         }
-    }    
+    }
 
     public async Task<Result<bool>> ResetPasswordAsync(string token, string newPassword)
     {
@@ -87,7 +112,7 @@ public class PasswordResetService : IPasswordResetService
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.PasswordResetTokenInvalid);
         }
-        
+
         var result = await _keycloakClientUser.UpdateUserPasswordAsync(cachedEntry.UserId, newPassword, false);
         if (!result)
         {
@@ -99,15 +124,46 @@ public class PasswordResetService : IPasswordResetService
         var updateDto = new KeycloakUserDto
         {
             Id = cachedEntry.UserId,
-            EmailVerified = true            
+            EmailVerified = true
         };
 
         var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
         if (!keycloakUpdateResult.Success)
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.UpdateInKeycloakFailed);
-        }        
+        }
 
-        return Result<bool>.Ok(data: true, message: "Email verified & Password reset.");
+        var subject = $"Επιτυχής Αλλαγή Κωδικού Πρόσβασης || Successful Password Change";
+        var message = $"Your Archium account password was successfully changed";
+
+        var emailMessageDto = new NotificationEmailDto
+        {
+            Recipient = cachedEntry.Email,
+            Subject = subject,
+            Message = message,
+            Type = EmailTemplateType.PasswordResetSuccess,
+            TemplateParams = new Dictionary<string, string>
+            {
+                ["Username"] = cachedEntry.Username,
+                ["ChangedAt"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+        };
+
+        try
+        {
+            var sent = await _emailSender.SendEmailAsync(emailMessageDto);
+            if (sent)
+            {
+                return Result<bool>.Ok(data: true, message: "Email verified & Password reset.");
+            }
+            else
+            {
+                return _errors.Fail<bool>(ErrorCodes.AUTH.EmailVerificationSendFailed);
+            }
+        }
+        catch (Exception)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.EmailVerificationSendFailed);
+        }
     }
 }

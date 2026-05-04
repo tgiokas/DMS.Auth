@@ -21,16 +21,21 @@ public class KeycloakClientAuthentication : KeycloakApiClient, IKeycloakClientAu
     }
 
     // Get Access Token using password (Direct Access Grant).
-    public async Task<TokenDto?> GetUserAccessTokenAsync(string username, string password)
+    public async Task<TokenDto?> GetUserAccessTokenAsync(string username, string password, bool offlineAccess = false)
     {
-        var content = new FormUrlEncodedContent(new[]
+        var parameters = new List<KeyValuePair<string, string>>
         {
-            new KeyValuePair<string, string>("grant_type", "password"),
-            new KeyValuePair<string, string>("client_id", _clientId),
-            new KeyValuePair<string, string>("client_secret", _clientSecret),
-            new KeyValuePair<string, string>("username", username),
-            new KeyValuePair<string, string>("password", password),
-        });
+            new("grant_type", "password"),
+            new("client_id", _clientId),
+            new("client_secret", _clientSecret),
+            new("username", username),
+            new("password", password),
+        };
+
+        if (offlineAccess)
+            parameters.Add(new("scope", "openid offline_access"));
+
+        var content = new FormUrlEncodedContent(parameters);
 
         var request = new HttpRequestMessage(HttpMethod.Post, $"{_keycloakServerUrl}/realms/{_realm}/protocol/openid-connect/token")
         {

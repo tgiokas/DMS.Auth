@@ -2,6 +2,7 @@
 
 using Authentication.Application.Interfaces;
 using Authentication.Application.Dtos;
+using Authentication.Domain.Enums;
 
 namespace Authentication.Api.Controllers;
 
@@ -16,10 +17,22 @@ public class PasswordResetController : ControllerBase
         _passwordResetService = passwordResetService;
     }
 
+    [HttpPost("set")]
+    public async Task<IActionResult> SetPassword(EmailAddressDto request)
+    {
+        var result = await _passwordResetService.SendResetLinkAsync(request.Email, EmailTemplateType.InitialPasswordSet);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+
+        return Ok(result);
+    }
+
     [HttpPost("forgot")]
     public async Task<IActionResult> ForgotPassword(EmailAddressDto request)
     {
-        var result = await _passwordResetService.SendResetLinkAsync(request.Email);
+        var result = await _passwordResetService.SendResetLinkAsync(request.Email, EmailTemplateType.PasswordReset);
         if (!result.Success)
         {
             return Accepted(result);

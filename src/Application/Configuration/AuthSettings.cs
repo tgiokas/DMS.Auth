@@ -16,8 +16,11 @@ public class AuthSettings
     // Email Whitelist ("off" to disable, "domain" or "email" to enable)
     public string EmailsWhitelist { get; set; } = "off";
 
-    // Password Reset
+    // Password Set
     public string PasswordResetUrl { get; set; } = string.Empty;
+
+    // Password Reset
+    public string PasswordSetUrl { get; set; } = string.Empty;
 
     // Email Verification
     public string VerificationUrl { get; set; } = string.Empty;
@@ -42,6 +45,9 @@ public class AuthSettings
 
             PasswordResetUrl = configuration["PASSWORD_RESET_URL"]
                 ?? throw new ArgumentNullException(nameof(configuration), "PASSWORD_RESET_URL is not set."),
+
+            PasswordSetUrl = configuration["PASSWORD_SET_URL"]
+                ?? throw new ArgumentNullException(nameof(configuration), "PASSWORD_SET_URL is not set."),
 
             VerificationUrl = configuration["VERIFICATION_URL"]
                 ?? throw new ArgumentNullException(nameof(configuration), "VERIFICATION_URL is not set."),

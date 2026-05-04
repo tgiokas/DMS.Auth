@@ -2,5 +2,5 @@
 
 public class UserIdDto
 {
-    public required string UserId { get; set; }   
+    public required string UserId { get; set; }
 }

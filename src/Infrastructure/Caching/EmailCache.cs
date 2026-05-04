@@ -17,6 +17,8 @@ public class EmailCache : IEmailCache
 
     private static string GetKey(string prefix, string token) => $"{prefix}:{token}";
 
+    public TimeSpan MfaCodeDuration => _defaultTtl;
+
     // Email verification
     public async Task StoreTokenAsync(string token, string email, TimeSpan? ttl = null)
     {

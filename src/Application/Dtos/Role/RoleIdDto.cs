@@ -2,5 +2,5 @@
 
 public class RoleIdDto
 {
-    public required string RoleId { get; set; }   
+    public required string RoleId { get; set; }
 }

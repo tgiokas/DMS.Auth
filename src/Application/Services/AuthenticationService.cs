@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Options;
 
 using Authentication.Application.Configuration;
@@ -46,7 +46,7 @@ public class AuthenticationService : IAuthenticationService
     }
 
     /// Authenticate / Login a user and retrieves a JWT token.
-    public async Task<Result<LoginResponseDto>?> LoginUserAsync(string username, string password)
+    public async Task<Result<LoginResponseDto>?> LoginUserAsync(string username, string password, bool rememberMe = false)
     {
         var loginKey = $"pwd:{username.Trim().ToLowerInvariant()}";
 
@@ -57,7 +57,7 @@ public class AuthenticationService : IAuthenticationService
         }
 
         // Validate credentials via Keycloak & return Token  
-        var tokenResponse = await _keycloakClientAuth.GetUserAccessTokenAsync(username, password);
+        var tokenResponse = await _keycloakClientAuth.GetUserAccessTokenAsync(username, password, offlineAccess: rememberMe);
         if (tokenResponse == null || string.IsNullOrWhiteSpace(tokenResponse.Access_token))
         {
             // Register failure
@@ -92,7 +92,8 @@ public class AuthenticationService : IAuthenticationService
                 MfaMethod = MfaType.None.ToString().ToLower(),
                 AccessToken = tokenResponse.Access_token,
                 RefreshToken = tokenResponse.Refresh_token,
-                ExpiresIn = tokenResponse.Expires_in
+                ExpiresIn = tokenResponse.Expires_in,
+                RememberMe = rememberMe
             });
         }
         else
@@ -110,7 +111,8 @@ public class AuthenticationService : IAuthenticationService
                 
                 AccessToken = tokenResponse.Access_token??"",
                 RefreshToken = tokenResponse?.Refresh_token??"",
-                ExpiresIn = tokenResponse?.Expires_in??0
+                ExpiresIn = tokenResponse?.Expires_in??0,
+                RememberMe = rememberMe
             });
 
             return Result<LoginResponseDto>.Ok(new LoginResponseDto
@@ -227,7 +229,8 @@ public class AuthenticationService : IAuthenticationService
             MfaEnabled = false,
             AccessToken = tokenResponse.Access_token,
             RefreshToken = tokenResponse.Refresh_token,
-            ExpiresIn = tokenResponse.Expires_in
+            ExpiresIn = tokenResponse.Expires_in,
+            RememberMe = false
         });
     }
 }

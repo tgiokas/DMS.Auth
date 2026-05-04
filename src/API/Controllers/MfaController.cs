@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-using Authentication.Api.Constants;
+using Microsoft.AspNetCore.Mvc;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Dtos;
+using Authentication.Api.Services;
 
 namespace Authentication.Api.Controllers;
 
@@ -71,14 +70,7 @@ public class MfaController : ControllerBase
             return Ok(result);
         }
 
-        Response.Cookies.Append("refresh_token", result.Data.RefreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Path = "/",
-            Expires = DateTimeOffset.UtcNow.AddHours(CookieConstants.RefreshTokenCookieExpirationHours)
-        });
+        AuthCookieService.AppendAuthCookies(Response, Request, result.Data.RefreshToken, result.Data.RememberMe);
 
         return Ok(result);
     }
@@ -123,14 +115,7 @@ public class MfaController : ControllerBase
             return Ok(result);
         }
 
-        Response.Cookies.Append("refresh_token", result.Data.RefreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Path = "/",
-            Expires = DateTimeOffset.UtcNow.AddHours(CookieConstants.RefreshTokenCookieExpirationHours)
-        });
+        AuthCookieService.AppendAuthCookies(Response, Request, result.Data.RefreshToken, result.Data.RememberMe);
 
         return Ok(result);
     }
@@ -163,14 +148,7 @@ public class MfaController : ControllerBase
             return Ok(result);
         }
 
-        Response.Cookies.Append("refresh_token", result.Data.RefreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Path = "/",
-            Expires = DateTimeOffset.UtcNow.AddHours(CookieConstants.RefreshTokenCookieExpirationHours)
-        });
+        AuthCookieService.AppendAuthCookies(Response, Request, result.Data.RefreshToken, result.Data.RememberMe);
 
         return Ok(result);
     }

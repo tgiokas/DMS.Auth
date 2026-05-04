@@ -1,4 +1,4 @@
-﻿using System.Web;
+using System.Web;
 
 using OtpNet;
 
@@ -15,7 +15,6 @@ public class MfaService : IMfaService
 {    
     private readonly ISmsVerificationService _smsVerification;
     private readonly IEmailVerificationService _emailVerification;
-    private readonly IKeycloakClientAuthentication _keycloakClientAuth;
     private readonly IKeycloakClientUser _keycloakClientUser;
     private readonly IUserRepository _userRepository;
     private readonly ITotpRepository _secretRepo;
@@ -24,8 +23,7 @@ public class MfaService : IMfaService
 
     public MfaService(       
         ISmsVerificationService smsVerification,
-        IEmailVerificationService emailVerification,
-        IKeycloakClientAuthentication keycloakClientAuth,
+        IEmailVerificationService emailVerification,       
         IKeycloakClientUser keycloakClientUser,
         IUserRepository userRepository,
         ITotpRepository secretRepo,
@@ -33,8 +31,7 @@ public class MfaService : IMfaService
         IErrorCatalog errors)
     {        
         _smsVerification = smsVerification;
-        _emailVerification = emailVerification;
-        _keycloakClientAuth = keycloakClientAuth;
+        _emailVerification = emailVerification;        
         _keycloakClientUser = keycloakClientUser;
         _userRepository = userRepository;
         _secretRepo = secretRepo;
@@ -192,7 +189,8 @@ public class MfaService : IMfaService
             MfaMethod = MfaType.Totp.ToString().ToLower(),
             AccessToken = loginAttempt.AccessToken,
             RefreshToken = loginAttempt.RefreshToken,
-            ExpiresIn = loginAttempt.ExpiresIn
+            ExpiresIn = loginAttempt.ExpiresIn,
+            RememberMe = loginAttempt.RememberMe
         };
 
         return Result<LoginResponseDto>.Ok(loginResponse);
@@ -267,7 +265,8 @@ public class MfaService : IMfaService
             MfaMethod = MfaType.Totp.ToString().ToLower(),
             AccessToken = loginAttempt.AccessToken,
             RefreshToken = loginAttempt.RefreshToken,
-            ExpiresIn = loginAttempt.ExpiresIn
+            ExpiresIn = loginAttempt.ExpiresIn,
+            RememberMe = loginAttempt.RememberMe
         };
 
         return Result<LoginResponseDto>.Ok(loginResponse);
@@ -319,7 +318,8 @@ public class MfaService : IMfaService
             MfaMethod = MfaType.Totp.ToString().ToLower(),
             AccessToken = loginAttempt.AccessToken,
             RefreshToken = loginAttempt.RefreshToken,
-            ExpiresIn = loginAttempt.ExpiresIn
+            ExpiresIn = loginAttempt.ExpiresIn,
+            RememberMe = loginAttempt.RememberMe
         };
 
         return Result<LoginResponseDto>.Ok(loginResponse);

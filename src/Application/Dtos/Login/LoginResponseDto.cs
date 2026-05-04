@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Authentication.Application.Dtos;
 
@@ -11,4 +11,8 @@ public class LoginResponseDto
     public bool MfaEnabled { get; set; } = false;
     public string MfaMethod { get; set; } = string.Empty;
     public string? MfaSetUpToken { get; set; }
+
+    /// <summary>Used by API layer for cookie lifetime; not exposed to JSON clients.</summary>
+    [JsonIgnore]
+    public bool RememberMe { get; set; }
 }

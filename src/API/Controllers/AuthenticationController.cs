@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
-using Authentication.Api.Constants;
 using Authentication.Application.Configuration;
 using Authentication.Application.Interfaces;
 using Authentication.Application.Dtos;
+using Authentication.Api.Services;
 
 namespace Authentication.Api.Controllers;
 
@@ -34,7 +34,7 @@ public class AuthenticationController : ControllerBase
             request.Username = request.Email;
         }
 
-        var result = await _authenticationService.LoginUserAsync(request.Username!, request.Password);
+        var result = await _authenticationService.LoginUserAsync(request.Username!, request.Password, request.RememberMe);
         if (result == null || !result.Success)
         {
             return Accepted(result);
@@ -45,7 +45,7 @@ public class AuthenticationController : ControllerBase
             return Ok(result);
         }
 
-        AppendRefreshTokenCookie(result.Data.RefreshToken);
+        AuthCookieService.AppendAuthCookies(Response, Request, result.Data.RefreshToken, result.Data.RememberMe);
 
         return Ok(result);
     }
@@ -60,7 +60,7 @@ public class AuthenticationController : ControllerBase
         if (!string.IsNullOrEmpty(result?.Data?.AccessToken) &&
             !string.IsNullOrEmpty(result?.Data?.RefreshToken))
         {
-            AppendRefreshTokenCookie(result.Data.RefreshToken);
+            AuthCookieService.AppendAuthCookies(Response, Request, result.Data.RefreshToken, result.Data.RememberMe);
         }
 
         return Redirect(entraIdRedirectUrl);
@@ -83,7 +83,7 @@ public class AuthenticationController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(result.Data?.Refresh_token))
         {
-            AppendRefreshTokenCookie(result.Data.Refresh_token);
+            AuthCookieService.RefreshAuthCookies(Response, Request, result.Data.Refresh_token);
         }
 
         return Ok(result);
@@ -95,6 +95,7 @@ public class AuthenticationController : ControllerBase
         var refreshTokenValue = ExtractRefreshTokenFromCookie(Request.HttpContext);
         if (string.IsNullOrEmpty(refreshTokenValue))
         {
+            AuthCookieService.DeleteAuthCookies(Response);
             return Accepted(new { message = "Refresh token is missing" });
         }
 
@@ -104,7 +105,7 @@ public class AuthenticationController : ControllerBase
             return Accepted(result);
         }
 
-        Response.Cookies.Delete("refresh_token");
+        AuthCookieService.DeleteAuthCookies(Response);
 
         return Ok(result);
     }
@@ -122,7 +123,7 @@ public class AuthenticationController : ControllerBase
 
     private static string? ExtractRefreshTokenFromCookie(HttpContext httpContext)
     {
-        if (httpContext.Request.Cookies.TryGetValue("refresh_token", out var token))
+        if (httpContext.Request.Cookies.TryGetValue(AuthCookieService.RefreshTokenCookieName, out var token))
         {
             return token;
         }
@@ -130,15 +131,4 @@ public class AuthenticationController : ControllerBase
         return null;
     }
 
-    private void AppendRefreshTokenCookie(string refreshToken)
-    {
-        Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Path = "/",
-            Expires = DateTimeOffset.UtcNow.AddHours(CookieConstants.RefreshTokenCookieExpirationHours)
-        });
-    }
 }
