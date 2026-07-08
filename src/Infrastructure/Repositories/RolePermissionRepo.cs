@@ -35,6 +35,16 @@ public class RolePermissionRepo : IRolePermissionRepo
             .ToListAsync();
     }
 
+    public async Task<List<Guid>> GetRolesByActionIdAsync(string actionId)
+    {
+        return await _dbContext.RolePermissions
+            .AsNoTracking()
+            .Where(r => r.ActionId == actionId)
+            .Select(r => r.KeycloakRoleId)
+            .Distinct()
+            .ToListAsync();
+    }
+
     public async Task<bool> IsEndpointAuthorizedAsync(Guid roleId, string httpMethod, string path)
     {
         var normalizedMethod = httpMethod.ToUpperInvariant();

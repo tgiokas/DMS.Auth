@@ -22,8 +22,26 @@ public class KeycloakClientUser : KeycloakApiClient, IKeycloakClientUser
     {
     }
 
+    // Default upper bound for Keycloak listing calls. Keycloak's own default
+    // is max=100, which silently truncates the result set when a realm is
+    // fronted by a large user federation provider (e.g. LDAP with thousands
+    // of entries). Callers can override by setting their own `max=` in the
+    // query string.
+    private const int DefaultMaxResults = 1000;
+
     public async Task<List<KeycloakUser>?> GetUsersAsync(string queryString)
     {
+        // Ensure pagination upper bound is explicit. We avoid silently
+        // capping at Keycloak's default 100.
+        if (string.IsNullOrEmpty(queryString))
+        {
+            queryString = $"max={DefaultMaxResults}";
+        }
+        else if (queryString.IndexOf("max=", StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            queryString = $"{queryString}&max={DefaultMaxResults}";
+        }
+
         var requestUrl = $"{_keycloakServerUrl}/admin/realms/{_realm}/users?{queryString}";
         var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, requestUrl);
 

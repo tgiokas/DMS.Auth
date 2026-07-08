@@ -8,6 +8,7 @@ public interface IRoleManagementService
     Task<Result<RoleProfileDto>> GetRoleByNameAsync(string rolename);
     Task<Result<RoleProfileDto>> GetRoleByIdAsync(string roleId);
     Task<Result<List<RoleProfileDto>>> GetUserRolesAsync(string username);
+    Task<Result<List<RoleProfileDto>>> GetUserRolesByUserIdAsync(string userId);
     Task<Result<List<UserProfileDto>>> GetUsersByRoleAsync(List<RoleDto> roles);
     Task<Result<RoleProfileDto>> CreateRoleAsync(RoleDto roleDto);
     Task<Result<RoleProfileDto>> UpdateRoleAsync(RoleUpdateDto roleDto);

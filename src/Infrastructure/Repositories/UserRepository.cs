@@ -38,7 +38,16 @@ public class UserRepository : IUserRepository
     {
         return await _dbContext.Users
             .FirstOrDefaultAsync(u => u.Username == username);
-    } 
+    }
+
+    public async Task<List<(Guid KeycloakUserId, bool IsDeleted)>> AreDeletedAsync(List<Guid> keycloakUserIds)
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => keycloakUserIds.Contains(u.KeycloakUserId))
+            .Select(s => new ValueTuple<Guid, bool>(s.KeycloakUserId, s.IsDeleted))
+            .ToListAsync();
+    }
 
     public async Task AddAsync(User user)
     {
@@ -61,5 +70,5 @@ public class UserRepository : IUserRepository
     {
         _dbContext.Users.Remove(user);
         await _dbContext.SaveChangesAsync();
-    }
+    }    
 }

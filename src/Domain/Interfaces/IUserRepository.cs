@@ -8,6 +8,7 @@ public interface IUserRepository
     Task<List<User>> GetNotDeletedAsync();
     Task<User?> GetByKeycloakUserIdAsync(Guid keycloakUserId);
     Task<User?> GetByUsernameAsync(string username);
+    Task<List<(Guid KeycloakUserId, bool IsDeleted)>> AreDeletedAsync(List<Guid> keycloakUserIds);
     Task AddAsync(User user);
     Task UpdateAsync(User user);
     Task DeleteAsync(User user);

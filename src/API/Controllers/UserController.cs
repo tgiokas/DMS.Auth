@@ -60,10 +60,32 @@ public class UserController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("isdeleted")]
+    public async Task<IActionResult> IsDeleted(List<IdDto> request)
+    {
+        var result = await _userManagementService.IsDeletedAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
     [HttpPost("create")]
     public async Task<IActionResult> CreateUser(UserCreateDto request)
     {
         var result = await _userManagementService.CreateUserAsync(request);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpPost("create-with-role")]
+    public async Task<IActionResult> CreateUserWithRole(UserCreateWithRoleDto request)
+    {
+        var result = await _userManagementService.CreateUserWithRolesAsync(request.User, new List<RoleDto> { request.Role });
         if (!result.Success)
         {
             return Accepted(result);
@@ -128,7 +150,7 @@ public class UserController : ControllerBase
 
     [HttpPost("attributes")]
     public async Task<IActionResult> GetUserAttributes(List<UserIdDto> request)
-    {        
+    {
         var result = await _userManagementService.GetUsersAttributesAsync(request);
         if (!result.Success)
         {
@@ -154,7 +176,7 @@ public class UserController : ControllerBase
         var result = await _userManagementService.DeleteUserAttributeAsync(request.UserId, request.Key);
         if (!result.Success)
         {
-            return Accepted(result);             
+            return Accepted(result);
         }
         return Ok(result);
     }

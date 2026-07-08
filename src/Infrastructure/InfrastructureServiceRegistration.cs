@@ -84,10 +84,40 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<ISmsCache, SmsCache>();
         services.AddScoped<IPasswordResetCache, PasswordResetCache>();
 
+        services.AddHttpClient<IKeycloakClientAuthentication, KeycloakClientAuthentication>(client =>
+        {            
+        }).ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            return new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        });
+
+        services.AddHttpClient<IKeycloakClientUser, KeycloakClientUser>(client =>
+        {           
+        }).ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            return new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        });
+
+        services.AddHttpClient<IKeycloakClientRole, KeycloakClientRole>(client =>
+        {            
+        }).ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            return new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            };
+        });
+        
         // Add HttpClient services
-        services.AddHttpClient<IKeycloakClientAuthentication, KeycloakClientAuthentication>();
-        services.AddHttpClient<IKeycloakClientUser, KeycloakClientUser>();
-        services.AddHttpClient<IKeycloakClientRole, KeycloakClientRole>();
+        //services.AddHttpClient<IKeycloakClientAuthentication, KeycloakClientAuthentication>();
+        //services.AddHttpClient<IKeycloakClientUser, KeycloakClientUser>();
+        //services.AddHttpClient<IKeycloakClientRole, KeycloakClientRole>();
 
         // Register Kafka-based SMS sender
         services.AddSingleton<ISmsSender, KafkaSmsSender>();

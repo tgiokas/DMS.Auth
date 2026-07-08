@@ -7,6 +7,7 @@ public interface IRolePermissionRepo
     Task<List<RolePermission>> GetAllAsync();
     Task<RolePermission?> GetByIdAsync(int id);
     Task<List<RolePermission>> GetByRoleIdAsync(Guid roleId);
+    Task<List<Guid>> GetRolesByActionIdAsync(string actionId);
     Task<bool> IsEndpointAuthorizedAsync(Guid roleId, string httpMethod, string path);
     Task AddAsync(RolePermission rule);
     Task UpdateAsync(RolePermission rule);

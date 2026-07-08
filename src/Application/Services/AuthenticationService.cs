@@ -81,7 +81,24 @@ public class AuthenticationService : IAuthenticationService
         // Check MFA type from repository
         var dbUser = await _userRepository.GetByKeycloakUserIdAsync(userId);
         if (dbUser == null)
-            return null;
+        {
+            // JIT-provision the local DB row for users coming from a Keycloak
+            // federation provider (e.g. LDAP). Mirrors what OAuth2CallbackAsync
+            // does for Entra ID users. Locally-created Keycloak users without a
+            // matching archium row still 202 — preserving the original safety
+            // property that arbitrary Keycloak users can't auto-create themselves.
+            if (string.IsNullOrEmpty(keycloakUser.FederationLink))
+                return null;
+
+            dbUser = new User
+            {
+                KeycloakUserId = userId,
+                Username = keycloakUser.UserName,
+                IsAdmin = false,
+                MfaType = MfaType.None,
+            };
+            await _userRepository.AddAsync(dbUser);
+        }
 
         // No MFA --> return token directly  
         if (dbUser.MfaType == MfaType.None)

@@ -23,6 +23,14 @@ public class KeycloakUser
     [JsonPropertyName("email")]
     public string? Email { get; set; }
 
+    /// <summary>
+    /// Set by Keycloak when a user is imported from a User Federation provider
+    /// (e.g. LDAP) or an Identity Provider link. Empty/null for users created
+    /// directly in Keycloak's local store.
+    /// </summary>
+    [JsonPropertyName("federationLink")]
+    public string? FederationLink { get; set; }
+
     [JsonPropertyName("attributes")]
     public Dictionary<string, string[]>? Attributes { get; set; }
 

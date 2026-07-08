@@ -1,52 +1,45 @@
-﻿namespace Authentication.Infrastructure.Helpers.Redaction
+﻿namespace Authentication.Infrastructure.Helpers.Redaction;
+
+public static class FormUrlEncodedRedactor
 {
-    public static class FormUrlEncodedRedactor
+    private const string RedactedValue = "***REDACTED***";
+
+    private static readonly HashSet<string> SensitiveKeys = new(StringComparer.OrdinalIgnoreCase)
     {
-        private static readonly HashSet<string> SensitiveKeys = new(StringComparer.OrdinalIgnoreCase)
+        "password", "newPassword",
+        "refresh_token", "access_token", "token", "id_token", "loginToken", "setupToken",
+        "client_secret", "code"
+    };
+
+    public static string TryRedact(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input;
+
+        if (!input.Contains('='))
+            return input;
+
+        try
         {
-            "password",
-            "newPassword",
-            "client_secret",
-            "refresh_token",
-            "access_token",
-            "token",
-            "id_token",
-            "code",
-            "loginToken",
-            "setupToken"
-        };
+            var pairs = input.Split('&', StringSplitOptions.RemoveEmptyEntries);
 
-        public static string TryRedact(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return input;
-
-            if (!input.Contains('='))
-                return input;
-
-            try
+            for (int i = 0; i < pairs.Length; i++)
             {
-                var pairs = input.Split('&', StringSplitOptions.RemoveEmptyEntries);
+                var kv = pairs[i].Split('=', 2);
+                if (kv.Length != 2) continue;
 
-                for (int i = 0; i < pairs.Length; i++)
+                var key = Uri.UnescapeDataString(kv[0]);
+                if (SensitiveKeys.Contains(key))
                 {
-                    var kv = pairs[i].Split('=', 2);
-                    if (kv.Length != 2) continue;
-
-                    var key = Uri.UnescapeDataString(kv[0]);
-                    if (SensitiveKeys.Contains(key))
-                    {
-                        pairs[i] = $"{kv[0]}=***REDACTED***";
-                    }
+                    pairs[i] = $"{kv[0]}={RedactedValue}";
                 }
+            }
 
-                return string.Join("&", pairs);
-            }
-            catch
-            {
-                return input;
-            }
-          
+            return string.Join("&", pairs);
         }
+        catch
+        {
+            return input;
+        }          
     }
 }

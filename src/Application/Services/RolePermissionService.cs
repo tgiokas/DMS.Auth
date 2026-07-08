@@ -60,6 +60,21 @@ public class RolePermissionService
         return Result<List<RolePermissionDto>>.Ok(dtos);
     }
 
+    public async Task<Result<List<RoleIdDto>>> GetRolesByActionIdAsync(string actionId)
+    {
+        if (string.IsNullOrWhiteSpace(actionId))
+            return _errors.Fail<List<RoleIdDto>>(ErrorCodes.AUTH.RulesNotFound);
+
+        var roleIds = await _repository.GetRolesByActionIdAsync(actionId);
+        if (roleIds == null || roleIds.Count == 0)
+        {
+            return _errors.Fail<List<RoleIdDto>>(ErrorCodes.AUTH.RulesNotFound);
+        }
+
+        var roleIdDtos = roleIds.Select(id => new RoleIdDto { RoleId = id.ToString() }).ToList();
+        return Result<List<RoleIdDto>>.Ok(roleIdDtos);
+    }
+
     public async Task<Result<List<RolePermissionDto>>> AddAsync(List<RolePermissionCreateDto> ruleDtos)
     {
         var createdDtos = new List<RolePermissionDto>();
@@ -115,7 +130,7 @@ public class RolePermissionService
         existing.ActionId = ruleDto.ActionId ?? existing.ActionId;
         existing.EndPoints = ruleDto.EndPoints ?? existing.EndPoints;
         existing.Urls = ruleDto.Urls ?? existing.Urls;
-        existing.Allowed = false;
+        existing.Allowed = true;
         existing.ModifiedAt = DateTime.UtcNow;
 
         await _repository.UpdateAsync(existing);

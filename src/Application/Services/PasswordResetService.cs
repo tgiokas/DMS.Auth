@@ -3,6 +3,7 @@
 using Authentication.Application.Configuration;
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
+using Authentication.Application.Extensions;
 using Authentication.Application.Interfaces;
 using Authentication.Domain.Enums;
 
@@ -145,7 +146,7 @@ public class PasswordResetService : IPasswordResetService
             TemplateParams = new Dictionary<string, string>
             {
                 ["Username"] = cachedEntry.Username,
-                ["ChangedAt"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                ["ChangedAt"] = DateTime.UtcNow.ToGreekDateTime().ToString()
             }
         };
 

@@ -99,6 +99,27 @@ public class RoleManagementService : IRoleManagementService
         return Result<List<RoleProfileDto>>.Ok(roleDtos);
     }
 
+    public async Task<Result<List<RoleProfileDto>>> GetUserRolesByUserIdAsync(string userId)
+    {
+        // Same as GetUserRolesAsync but takes the Keycloak user id directly,
+        // skipping the GetUserByNameAsync resolution (which federates to LDAP).
+        // Used by list enrichment where the id is already known.
+        var userRoles = await _keycloakClientRole.GetUserRolesAsync(userId);
+        if (userRoles == null)
+        {
+            return _errors.Fail<List<RoleProfileDto>>(ErrorCodes.AUTH.UserRolesNotFound);
+        }
+
+        var roleDtos = userRoles.Select(r => new RoleProfileDto
+        {
+            Id = r.Id,
+            RoleName = r.Name,
+            Description = r.Description
+        }).ToList();
+
+        return Result<List<RoleProfileDto>>.Ok(roleDtos);
+    }
+
     public async Task<Result<List<UserProfileDto>>> GetUsersByRoleAsync(List<RoleDto> roles)
     {
         if (roles == null || roles.Count == 0)

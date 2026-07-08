@@ -32,9 +32,15 @@ public class KafkaSettings
     // Max time before message is considered failed (client side)
     public int MessageTimeoutMs { get; set; }
 
+    // Optional SASL/SSL fields — when absent/blank, plaintext is used (no behaviour change)
+    public string? SecurityProtocol { get; set; }
+    public string? SaslMechanism { get; set; }
+    public string? SaslUsername { get; set; }
+    public string? SaslPassword { get; set; }
+
     public static KafkaSettings BindFromConfiguration(IConfiguration configuration)
     {
-        return new KafkaSettings
+        var settings = new KafkaSettings
         {
             // Broker connection settings
             BootstrapServers = configuration["KAFKA_BOOTSTRAP_SERVERS"]
@@ -49,8 +55,15 @@ public class KafkaSettings
                 ?? throw new ArgumentNullException(nameof(configuration), "AUTH_KAFKA_TOPIC is not set."),
             RetryBackoffMs = ParseInt(configuration, "AUTH_KAFKA_RETRY_BACKOFF_MS"),
             RequestTimeoutMs = ParseInt(configuration, "AUTH_KAFKA_REQUEST_TIMEOUT_MS"),
-            MessageTimeoutMs = ParseInt(configuration, "AUTH_KAFKA_MESSAGE_TIMEOUT_MS"),                 
+            MessageTimeoutMs = ParseInt(configuration, "AUTH_KAFKA_MESSAGE_TIMEOUT_MS"),
         };
+
+        settings.SecurityProtocol = configuration["AUTH_KAFKA_SECURITY_PROTOCOL"];
+        settings.SaslMechanism    = configuration["AUTH_KAFKA_SASL_MECHANISM"];
+        settings.SaslUsername     = configuration["AUTH_KAFKA_SASL_USERNAME"];
+        settings.SaslPassword     = configuration["AUTH_KAFKA_SASL_PASSWORD"];
+
+        return settings;
     }
 
     private static int ParseInt(IConfiguration config, string key)

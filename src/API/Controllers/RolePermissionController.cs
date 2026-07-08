@@ -52,6 +52,18 @@ public class RolePermissionController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("getrolesbyactionid")]
+    public async Task<IActionResult> GetRolesByActionId(RoleActionIdDto request)
+    {
+        var result = await _rolePermissionService.GetRolesByActionIdAsync(request.ActionId);
+        if (!result.Success)
+        {
+            return Accepted(result);
+        }
+
+        return Ok(result);
+    }
+
     [HttpPost("create")]
     public async Task<IActionResult> Create(List<RolePermissionCreateDto> request)
     {
