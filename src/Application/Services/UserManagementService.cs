@@ -54,91 +54,17 @@ public class UserManagementService : IUserManagementService
         var filtersMap = (queryParams.Filters ?? new List<FilterCriterion>())
             .ToDictionary(f => f.Field.Trim().ToLowerInvariant(), f => f.Value.Trim(), StringComparer.OrdinalIgnoreCase);
 
-        // Rule: if "search" exists -> ignore every other filter
         string? searchVal = filtersMap.TryGetValue("search", out var sv) ? sv : null;
         bool hasSearch = !string.IsNullOrWhiteSpace(searchVal);
 
-        // Extract Keycloak-side filter values up front so the compiler can see
-        // them as definitely assigned in the branch below.
-        string? fUsername = filtersMap.TryGetValue("username", out var v1) ? v1 : null;
-        string? fEmail = filtersMap.TryGetValue("email", out var v2) ? v2 : null;
-        string? fFirstName = filtersMap.TryGetValue("firstname", out var v3) ? v3 : null;
-        string? fLastName = filtersMap.TryGetValue("lastname", out var v4) ? v4 : null;
-        string? fEnabled = filtersMap.TryGetValue("enabled", out var v5) ? v5 : null;
-
-        // Detect whether ANY filter requires querying Keycloak. Local-only filters
-        // (isAdmin, createdAtFrom, createdAtTo) are handled later in memory.
-        bool hasKeycloakSideFilter =
-            hasSearch
-            || !string.IsNullOrWhiteSpace(fUsername)
-            || !string.IsNullOrWhiteSpace(fEmail)
-            || !string.IsNullOrWhiteSpace(fFirstName)
-            || !string.IsNullOrWhiteSpace(fLastName)
-            || !string.IsNullOrWhiteSpace(fEnabled);
-
-        // Fetch users from DB (not deleted) only for local enrichment.
-        // Keycloak/LDAP remains the source of truth for the user list because
-        // LDAP users may not have local DB rows. Local data is used only when
-        // available (phone, admin flag, MFA method, local timestamps).
+        // The local auth DB (users who have actually logged in, ~100 rows) is the
+        // source of truth for the user list, NOT the full Keycloak/LDAP directory
+        // (which can hold thousands of LDAP accounts that never used this app).
+        // We only ever call Keycloak once per local user to enrich its profile.
         var localUsers = await _userRepository.GetNotDeletedAsync();
-        var localUserDict = localUsers
-            .Where(u => !string.IsNullOrEmpty(u.Username))
-            .ToDictionary(u => u.Username!, StringComparer.OrdinalIgnoreCase);
+        localUsers = localUsers.Where(u => !string.IsNullOrEmpty(u.Username)).ToList();
 
-        IEnumerable<KeycloakUser> mergedKeycloakUsers;
-
-        if (hasKeycloakSideFilter)
-        {
-            // Filtered path: query Keycloak/LDAP with the filter.
-            // Do not intersect with auth-db because LDAP users may not exist locally.
-            // The DB is enrichment only, not the source of truth.
-            string filterString;
-            if (hasSearch)
-            {
-                filterString = $"search={Uri.EscapeDataString(searchVal!)}";
-            }
-            else
-            {
-                var parts = new List<string>();
-                if (!string.IsNullOrWhiteSpace(fUsername))
-                    parts.Add($"username={Uri.EscapeDataString(fUsername)}");
-                if (!string.IsNullOrWhiteSpace(fEmail))
-                    parts.Add($"email={Uri.EscapeDataString(fEmail)}");
-                if (!string.IsNullOrWhiteSpace(fFirstName))
-                    parts.Add($"firstName={Uri.EscapeDataString(fFirstName)}");
-                if (!string.IsNullOrWhiteSpace(fLastName))
-                    parts.Add($"lastName={Uri.EscapeDataString(fLastName)}");
-                if (!string.IsNullOrWhiteSpace(fEnabled))
-                    parts.Add($"enabled={fEnabled.ToLowerInvariant()}");
-                filterString = string.Join("&", parts);
-            }
-
-            var keycloakUsers = await FetchAllKeycloakUsersAsync(filterString);
-            if (keycloakUsers == null)
-                return _errors.Fail<Dtos.PagedResult<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
-
-            mergedKeycloakUsers = keycloakUsers
-                .Where(kc => !string.IsNullOrWhiteSpace(kc.UserName));
-        }
-        else
-        {
-            // Unfiltered path: fetch Keycloak/LDAP users in pages.
-            var keycloakUsers = await FetchAllKeycloakUsersAsync();
-            if (keycloakUsers == null)
-                return _errors.Fail<Dtos.PagedResult<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
-
-            mergedKeycloakUsers = keycloakUsers
-                .Where(kc => !string.IsNullOrWhiteSpace(kc.UserName));
-        }
-
-        // Merge profiles WITHOUT roles. LDAP-only users are included.       
-        // We only fetch roles for the users we actually return.         
-        var userProfiles = new List<UserProfileDto>();
-        foreach (var kcUser in mergedKeycloakUsers)
-        {
-            localUserDict.TryGetValue(kcUser.UserName!, out var localUser);
-            userProfiles.Add(MapToUserProfile(kcUser, localUser));
-        }
+        var userProfiles = await BuildUserProfilesAsync(localUsers);
 
         // No filters, sorting, or pagination --> return everything immediately
         bool noFilters = !filtersMap.Any();
@@ -146,8 +72,8 @@ public class UserManagementService : IUserManagementService
         bool noPaging = !queryParams.PageNumber.HasValue && !queryParams.PageSize.HasValue;
 
         if (noFilters && noSorting && noPaging)
-        {            
-            // Keep roles only when requested, because enriching 1000 users means 1000 role-mapping calls.
+        {
+            // Keep roles only when requested, because enriching many users means many role-mapping calls.
             if (includeRoles)
                 await EnrichRolesAsync(userProfiles);
 
@@ -162,9 +88,35 @@ public class UserManagementService : IUserManagementService
             return Result<Dtos.PagedResult<UserProfileDto>>.Ok(resultAll);
         }
 
-        // Apply local filters ONLY when search is NOT present
-        if (!hasSearch && queryParams.Filters != null && queryParams.Filters.Any())
+        // Apply all filters in-memory against the (small) local user set.
+        if (hasSearch)
         {
+            var term = searchVal!.Trim();
+            userProfiles = userProfiles
+                .Where(u =>
+                    Contains(u.UserName, term) ||
+                    Contains(u.Email, term) ||
+                    Contains(u.FirstName, term) ||
+                    Contains(u.LastName, term))
+                .ToList();
+        }
+        else if (queryParams.Filters != null && queryParams.Filters.Any())
+        {
+            if (filtersMap.TryGetValue("username", out var fUsername) && !string.IsNullOrWhiteSpace(fUsername))
+                userProfiles = userProfiles.Where(u => Contains(u.UserName, fUsername)).ToList();
+
+            if (filtersMap.TryGetValue("email", out var fEmail) && !string.IsNullOrWhiteSpace(fEmail))
+                userProfiles = userProfiles.Where(u => Contains(u.Email, fEmail)).ToList();
+
+            if (filtersMap.TryGetValue("firstname", out var fFirstName) && !string.IsNullOrWhiteSpace(fFirstName))
+                userProfiles = userProfiles.Where(u => Contains(u.FirstName, fFirstName)).ToList();
+
+            if (filtersMap.TryGetValue("lastname", out var fLastName) && !string.IsNullOrWhiteSpace(fLastName))
+                userProfiles = userProfiles.Where(u => Contains(u.LastName, fLastName)).ToList();
+
+            if (filtersMap.TryGetValue("enabled", out var fEnabled) && bool.TryParse(fEnabled, out var enabledBool))
+                userProfiles = userProfiles.Where(u => u.Enabled == enabledBool).ToList();
+
             if (filtersMap.TryGetValue("isadmin", out var isAdminValue) && bool.TryParse(isAdminValue, out var isAdminBool))
             {
                 userProfiles = userProfiles.Where(u => u.IsAdmin == isAdminBool).ToList();
@@ -889,39 +841,37 @@ public class UserManagementService : IUserManagementService
         return Result<bool>.Ok(data: true, message: $"Attribute {key} deleted successfully.");
     }
 
-    /// Fetches all matching Keycloak users using explicit pagination. 
-    private async Task<List<KeycloakUser>?> FetchAllKeycloakUsersAsync(string? baseQueryString = null)
+    /// Builds a UserProfileDto for each local (auth-db) user by fetching its matching
+    /// Keycloak profile individually, instead of paging through the entire LDAP directory.
+    /// Runs with bounded concurrency so a large local user set does not open a connection per user.
+    private async Task<List<UserProfileDto>> BuildUserProfilesAsync(List<User> localUsers)
     {
-        const int pageSize = 100;
-        var first = 0;
-        var allUsers = new List<KeycloakUser>();
-        var baseQuery = string.IsNullOrWhiteSpace(baseQueryString)
-            ? string.Empty
-            : baseQueryString.Trim('&');
+        if (localUsers.Count == 0)
+            return new List<UserProfileDto>();
 
-        while (true)
+        const int maxConcurrency = 10;
+        using var gate = new SemaphoreSlim(maxConcurrency);
+
+        var tasks = localUsers.Select(async localUser =>
         {
-            var pageQuery = $"first={first}&max={pageSize}&briefRepresentation=true";
-            var queryString = string.IsNullOrWhiteSpace(baseQuery)
-                ? pageQuery
-                : $"{baseQuery}&{pageQuery}";
-            var page = await _keycloakClientUser.GetUsersAsync(queryString);
+            await gate.WaitAsync();
+            try
+            {
+                var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(localUser.Username);
+                return keycloakUser == null ? null : MapToUserProfile(keycloakUser, localUser);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
 
-            if (page == null)
-                return null;
-
-            allUsers.AddRange(page);
-
-            // Last page reached. Keycloak returns fewer than `max` users when
-            // there are no more results to fetch.
-            if (page.Count < pageSize)
-                break;
-
-            first += pageSize;
-        }
-
-        return allUsers;
+        var results = await Task.WhenAll(tasks);
+        return results.Where(p => p != null).Select(p => p!).ToList();
     }
+
+    private static bool Contains(string? source, string term)
+        => !string.IsNullOrEmpty(source) && source.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// Populates UserProfileDto.Roles for the given profiles by fetching each user's client roles 
     /// Runs with bounded concurrency so a "return everything" call does not open a connection per user.
