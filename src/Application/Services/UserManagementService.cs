@@ -1,4 +1,4 @@
-﻿using System.Linq.Dynamic.Core;
+using System.Linq.Dynamic.Core;
 using Microsoft.Extensions.Options;
 
 using Authentication.Application.Configuration;
@@ -48,6 +48,8 @@ public class UserManagementService : IUserManagementService
         if (queryParams == null)
             queryParams = new UserQueryParams();
 
+        var includeRoles = queryParams.IncludeRoles ?? true;
+
         // Build filters map
         var filtersMap = (queryParams.Filters ?? new List<FilterCriterion>())
             .ToDictionary(f => f.Field.Trim().ToLowerInvariant(), f => f.Value.Trim(), StringComparer.OrdinalIgnoreCase);
@@ -74,9 +76,10 @@ public class UserManagementService : IUserManagementService
             || !string.IsNullOrWhiteSpace(fLastName)
             || !string.IsNullOrWhiteSpace(fEnabled);
 
-        // Fetch users from DB (not deleted). This is the canonical "users in
-        // this service" list — Keycloak is only used for live enrichment
-        // (email, names, enabled, createdTimestamp).
+        // Fetch users from DB (not deleted) only for local enrichment.
+        // Keycloak/LDAP remains the source of truth for the user list because
+        // LDAP users may not have local DB rows. Local data is used only when
+        // available (phone, admin flag, MFA method, local timestamps).
         var localUsers = await _userRepository.GetNotDeletedAsync();
         var localUserDict = localUsers
             .Where(u => !string.IsNullOrEmpty(u.Username))
@@ -86,11 +89,9 @@ public class UserManagementService : IUserManagementService
 
         if (hasKeycloakSideFilter)
         {
-            // Filtered path: query Keycloak with the filter and intersect with
-            // local users. The Keycloak result set here is small enough that
-            // Keycloak's default page size is not a concern, but we still pass
-            // an explicit max so admin-side searches over a large LDAP
-            // federation return a useful number of candidates.
+            // Filtered path: query Keycloak/LDAP with the filter.
+            // Do not intersect with auth-db because LDAP users may not exist locally.
+            // The DB is enrichment only, not the source of truth.
             string filterString;
             if (hasSearch)
             {
@@ -112,41 +113,26 @@ public class UserManagementService : IUserManagementService
                 filterString = string.Join("&", parts);
             }
 
-            var keycloakUsers = await _keycloakClientUser.GetUsersAsync(filterString);
+            var keycloakUsers = await FetchAllKeycloakUsersAsync(filterString);
             if (keycloakUsers == null)
                 return _errors.Fail<Dtos.PagedResult<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
 
-            // Intersect with local users — must exist in auth-db to appear.
             mergedKeycloakUsers = keycloakUsers
-                .Where(kc => kc.UserName is not null && localUserDict.ContainsKey(kc.UserName));
+                .Where(kc => !string.IsNullOrWhiteSpace(kc.UserName));
         }
         else
         {
-            // Unfiltered path: drive the lookup from auth-db.
-            //
-            // Why: Keycloak's `GET /admin/realms/{realm}/users` (no filter)
-            // returns at most `max=100` entries by default (alphabetical),
-            // which silently truncates the listing in realms fronted by a
-            // large LDAP user federation provider — none of the few
-            // locally-provisioned users may fall in the first page, producing
-            // an empty intersection. By fetching the small set of auth-db
-            // users by ID we avoid the cliff entirely and stay O(N_local).
-            var kcLookups = localUsers
-                .Where(u => !string.IsNullOrEmpty(u.Username))
-                .Select(u => _keycloakClientUser.GetUserByIdAsync(u.KeycloakUserId.ToString()))
-                .ToArray();
-            var fetched = await Task.WhenAll(kcLookups);
-            mergedKeycloakUsers = fetched
-                .Where(u => u is not null && !string.IsNullOrEmpty(u!.UserName))
-                .Cast<KeycloakUser>();
+            // Unfiltered path: fetch Keycloak/LDAP users in pages.
+            var keycloakUsers = await FetchAllKeycloakUsersAsync();
+            if (keycloakUsers == null)
+                return _errors.Fail<Dtos.PagedResult<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
+
+            mergedKeycloakUsers = keycloakUsers
+                .Where(kc => !string.IsNullOrWhiteSpace(kc.UserName));
         }
 
-        // Merge — build profiles WITHOUT roles. Role enrichment is deferred until
-        // after filtering/sorting/pagination (see EnrichRolesAsync) so we only
-        // fetch roles for the users we actually return. Roles are pure output
-        // data — IsAdmin comes from the local DB, not from Keycloak roles — so
-        // deferring them does not affect filtering or sorting. This avoids an
-        // N+1 over the whole (LDAP-federated) directory on every getusers call.
+        // Merge profiles WITHOUT roles. LDAP-only users are included.       
+        // We only fetch roles for the users we actually return.         
         var userProfiles = new List<UserProfileDto>();
         foreach (var kcUser in mergedKeycloakUsers)
         {
@@ -160,9 +146,10 @@ public class UserManagementService : IUserManagementService
         bool noPaging = !queryParams.PageNumber.HasValue && !queryParams.PageSize.HasValue;
 
         if (noFilters && noSorting && noPaging)
-        {
-            // Caller explicitly wants the full unpaged list — enrich all of them.
-            await EnrichRolesAsync(userProfiles);
+        {            
+            // Keep roles only when requested, because enriching 1000 users means 1000 role-mapping calls.
+            if (includeRoles)
+                await EnrichRolesAsync(userProfiles);
 
             var resultAll = new Dtos.PagedResult<UserProfileDto>
             {
@@ -270,8 +257,11 @@ public class UserManagementService : IUserManagementService
 
         var items = sorted.ToList();
 
-        // Enrich roles only for the page we return — not the whole directory.
-        await EnrichRolesAsync(items);
+        // Enrich roles only for the page we return, not the whole directory.
+        // High-volume consumers can set IncludeRoles = false to skip these
+        // Keycloak role-mapping calls entirely.
+        if (includeRoles)
+            await EnrichRolesAsync(items);
 
         var totalCount = userProfiles.Count;
         var pageSize = queryParams.PageSize ?? totalCount;
@@ -288,40 +278,7 @@ public class UserManagementService : IUserManagementService
         };
 
         return Result<Dtos.PagedResult<UserProfileDto>>.Ok(pagedResult);
-    }
-
-    /// <summary>
-    /// Populates <see cref="UserProfileDto.Roles"/> for the given profiles by
-    /// fetching each user's client roles from Keycloak by user id (no
-    /// username→id resolution). Runs with bounded concurrency so a large
-    /// "return everything" call does not open a connection per user.
-    /// </summary>
-    private async Task EnrichRolesAsync(IReadOnlyCollection<UserProfileDto> profiles)
-    {
-        if (profiles.Count == 0)
-            return;
-
-        const int maxConcurrency = 10;
-        using var gate = new SemaphoreSlim(maxConcurrency);
-
-        var tasks = profiles.Select(async profile =>
-        {
-            await gate.WaitAsync();
-            try
-            {
-                var rolesResult = await _roleManagementService.GetUserRolesByUserIdAsync(profile.Id);
-                profile.Roles = rolesResult.Success
-                    ? (rolesResult.Data ?? new List<RoleProfileDto>())
-                    : new List<RoleProfileDto>();
-            }
-            finally
-            {
-                gate.Release();
-            }
-        });
-
-        await Task.WhenAll(tasks);
-    }
+    }      
 
     public async Task<Result<UserProfileDto>> GetUserByNameAsync(string username)
     {
@@ -437,7 +394,7 @@ public class UserManagementService : IUserManagementService
             {
                 return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.EmailNotWhitelisted);
             }
-        }        
+        }
 
         // Check if user exists
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(request.Username);
@@ -523,8 +480,8 @@ public class UserManagementService : IUserManagementService
         return Result<UserProfileDto>.Ok(profile, $"User {request.Username} created successfully");
     }
 
-    public async Task<Result<UserProfileDto>> CreateUserWithRolesAsync(UserCreateDto  request, List<RoleDto> rolesToAssign)
-    {        
+    public async Task<Result<UserProfileDto>> CreateUserWithRolesAsync(UserCreateDto request, List<RoleDto> rolesToAssign)
+    {
         // CreateUser 
         var keycloakUserNew = await CreateUserAsync(request);
         if (!keycloakUserNew.Success)
@@ -541,7 +498,7 @@ public class UserManagementService : IUserManagementService
                 return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.AssignRoleFailed);
             }
         }
-        
+
         return Result<UserProfileDto>.Ok(keycloakUserNew.Data!, $"User {request.Username} created and roles assigned successfully.");
     }
 
@@ -667,7 +624,7 @@ public class UserManagementService : IUserManagementService
 
         var updatedKeycloakUser = await _keycloakClientUser.GetUserByIdAsync(request.Id);
 
-        if (updatedKeycloakUser == null) 
+        if (updatedKeycloakUser == null)
         {
             return _errors.Fail<UserProfileDto>(ErrorCodes.AUTH.UserIdNotFound);
         }
@@ -760,7 +717,7 @@ public class UserManagementService : IUserManagementService
 
         return Result<bool>.Ok(data: true, message: "Users Fake deleted successfully.");
     }
-    
+
     public async Task<Result<bool>> EnableUsersAsync(List<IdDto> userIds)
     {
         var failedIds = new List<string>();
@@ -829,7 +786,7 @@ public class UserManagementService : IUserManagementService
             // Disable user in Keycloak
             var keycloakUpdateResult = await _keycloakClientUser.UpdateUserAsync(updateDto);
             if (!keycloakUpdateResult.Success)
-            {                
+            {
                 failedIds.Add(userIdDto.Id);
                 continue;
             }
@@ -846,7 +803,7 @@ public class UserManagementService : IUserManagementService
         if (failedIds.Count > 0)
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.UserNotFoundInKeycloak);
-        }        
+        }
 
         return Result<bool>.Ok(data: true, message: "Users disabled successfully.");
     }
@@ -932,11 +889,73 @@ public class UserManagementService : IUserManagementService
         return Result<bool>.Ok(data: true, message: $"Attribute {key} deleted successfully.");
     }
 
+    /// Fetches all matching Keycloak users using explicit pagination. 
+    private async Task<List<KeycloakUser>?> FetchAllKeycloakUsersAsync(string? baseQueryString = null)
+    {
+        const int pageSize = 100;
+        var first = 0;
+        var allUsers = new List<KeycloakUser>();
+        var baseQuery = string.IsNullOrWhiteSpace(baseQueryString)
+            ? string.Empty
+            : baseQueryString.Trim('&');
 
-    private static UserProfileDto MapToUserProfile(KeycloakUser keycloakUser, 
-        User? localUser, 
+        while (true)
+        {
+            var pageQuery = $"first={first}&max={pageSize}&briefRepresentation=true";
+            var queryString = string.IsNullOrWhiteSpace(baseQuery)
+                ? pageQuery
+                : $"{baseQuery}&{pageQuery}";
+            var page = await _keycloakClientUser.GetUsersAsync(queryString);
+
+            if (page == null)
+                return null;
+
+            allUsers.AddRange(page);
+
+            // Last page reached. Keycloak returns fewer than `max` users when
+            // there are no more results to fetch.
+            if (page.Count < pageSize)
+                break;
+
+            first += pageSize;
+        }
+
+        return allUsers;
+    }
+
+    /// Populates UserProfileDto.Roles for the given profiles by fetching each user's client roles 
+    /// Runs with bounded concurrency so a "return everything" call does not open a connection per user.
+    private async Task EnrichRolesAsync(IReadOnlyCollection<UserProfileDto> profiles)
+    {
+        if (profiles.Count == 0)
+            return;
+
+        const int maxConcurrency = 10;
+        using var gate = new SemaphoreSlim(maxConcurrency);
+
+        var tasks = profiles.Select(async profile =>
+        {
+            await gate.WaitAsync();
+            try
+            {
+                var rolesResult = await _roleManagementService.GetUserRolesByUserIdAsync(profile.Id);
+                profile.Roles = rolesResult.Success
+                    ? (rolesResult.Data ?? new List<RoleProfileDto>())
+                    : new List<RoleProfileDto>();
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+
+    private static UserProfileDto MapToUserProfile(KeycloakUser keycloakUser,
+        User? localUser,
         List<RoleProfileDto>? roles = null)
-    {               
+    {
         var profile = new UserProfileDto
         {
             Id = keycloakUser.Id,
@@ -948,7 +967,7 @@ public class UserManagementService : IUserManagementService
             Email = keycloakUser.Email,
             PhoneNumber = localUser?.PhoneNumber,
             Deleted = localUser?.IsDeleted ?? false,
-            IsAdmin = localUser?.IsAdmin ?? false,            
+            IsAdmin = localUser?.IsAdmin ?? false,
             MfaMethod = localUser?.MfaType.ToString().ToLower(),
             CreatedAt = localUser?.CreatedAt ?? keycloakUser.CreatedAt,
             ModifiedAt = localUser?.ModifiedAt,
