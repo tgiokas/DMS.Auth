@@ -28,6 +28,15 @@ public class UserRepository : IUserRepository
             .ToListAsync();
     }
 
+    public async Task<List<Guid>> GetNotDeletedAsync(List<Guid> keycloakUserIds)
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .Where(r => keycloakUserIds.Contains(r.KeycloakUserId) && !r.IsDeleted)
+            .Select(s => s.KeycloakUserId)
+            .ToListAsync();
+    }
+
     public async Task<User?> GetByKeycloakUserIdAsync(Guid keycloakUserId)
     {
         return await _dbContext.Users

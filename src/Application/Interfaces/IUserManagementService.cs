@@ -7,7 +7,7 @@ public interface IUserManagementService
     Task<Result<Dtos.PagedResult<UserProfileDto>>> GetUsersAsync(UserQueryParams queryParams);
     Task<Result<UserProfileDto>> GetUserByNameAsync(string username);
     Task<Result<UserProfileDto>> GetUserByIdAsync(string userId);
-    Task<Result<List<UserProfileDto>>> GetUsersByIdsAsync(List<IdDto> userIds);
+    Task<Result<List<UserProfileWithDeletedStatusDto>>> GetUsersByIdsAsync(List<IdDto> userIds);
     Task<Result<List<UserInfoDto>>> IsDeletedAsync(List<IdDto> userIds);
     Task<Result<UserProfileDto>> CreateUserAsync(UserCreateDto request);
     Task<Result<UserProfileDto>> CreateUserWithRolesAsync(UserCreateDto request, List<RoleDto> rolesToAssign);

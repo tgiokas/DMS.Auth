@@ -1,24 +1,27 @@
-using System.Data;
-
 using Authentication.Application.Dtos;
 using Authentication.Application.Errors;
 using Authentication.Application.Interfaces;
+using Authentication.Domain.Interfaces;
+using System.Data;
 
 namespace Authentication.Application.Services;
 
 public class RoleManagementService : IRoleManagementService
 {
+    private readonly IUserRepository _userRepository;
     private readonly IKeycloakClientRole _keycloakClientRole;
     private readonly IKeycloakClientUser _keycloakClientUser;   
     private readonly IErrorCatalog _errors;
 
     public RoleManagementService(
         IKeycloakClientRole keycloakClientRole,
-        IKeycloakClientUser keycloakClientUser,      
+        IKeycloakClientUser keycloakClientUser,
+        IUserRepository userRepository,
         IErrorCatalog errors)
     {
         _keycloakClientUser = keycloakClientUser;
-        _keycloakClientRole = keycloakClientRole;       
+        _keycloakClientRole = keycloakClientRole;
+        _userRepository = userRepository;
         _errors = errors;
     }
 
@@ -126,6 +129,7 @@ public class RoleManagementService : IRoleManagementService
             return _errors.Fail<List<UserProfileDto>>(ErrorCodes.AUTH.RolesNotFound);
 
         var allUsers = new Dictionary<string, UserProfileDto>();
+        var keycloakUsers = new List<KeycloakUser>();
 
         foreach (var roleDto in roles)
         {
@@ -133,7 +137,7 @@ public class RoleManagementService : IRoleManagementService
             if (role == null)
                 continue;
 
-            var keycloakUsers = await _keycloakClientRole.GetUsersByRoleAsync(roleDto.RoleName);
+            keycloakUsers = await _keycloakClientRole.GetUsersByRoleAsync(roleDto.RoleName);
             if (keycloakUsers == null)
                 continue;
 
@@ -146,7 +150,12 @@ public class RoleManagementService : IRoleManagementService
 
             foreach (var u in keycloakUsers)
             {
-                if (!allUsers.ContainsKey(u.Id))
+                if (allUsers.TryGetValue(u.Id, out var existing))
+                {
+                    if (!existing.Roles.Any(r => r.Id == roleProfile.Id))
+                        existing.Roles.Add(roleProfile);
+                }
+                else
                 {
                     allUsers[u.Id] = new UserProfileDto
                     {
@@ -168,6 +177,22 @@ public class RoleManagementService : IRoleManagementService
         if (allUsers.Count == 0)
         {
             return _errors.Fail<List<UserProfileDto>>(ErrorCodes.AUTH.UsersNotFound);
+        }
+
+        // Return only those users who are not logically deleted
+        if (allUsers.Count > 0)
+        {
+            var ids = allUsers.Keys
+                .Select(k => Guid.TryParse(k, out var g) ? (Guid?)g : null)
+                .Where(g => g.HasValue)
+                .Select(s => s!.Value)
+                .ToList();
+
+            var activeUsers = await _userRepository.GetNotDeletedAsync(ids);
+            var activeUserIds = activeUsers.ToHashSet();
+
+            allUsers = allUsers.Where(kvp => Guid.TryParse(kvp.Key, out var id) && activeUserIds.Contains(id))
+                               .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         return Result<List<UserProfileDto>>.Ok(allUsers.Values.ToList());
