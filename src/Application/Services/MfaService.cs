@@ -12,31 +12,59 @@ using Authentication.Domain.Interfaces;
 namespace Authentication.Application.Services;
 
 public class MfaService : IMfaService
-{    
+{
     private readonly ISmsVerificationService _smsVerification;
     private readonly IEmailVerificationService _emailVerification;
     private readonly IKeycloakClientUser _keycloakClientUser;
+    private readonly IKeycloakClientAuthentication _keycloakClientAuth;
     private readonly IUserRepository _userRepository;
     private readonly ITotpRepository _secretRepo;
     private readonly ITotpCache _totpCache;
+    private readonly IAuthLockoutService _authLockout;
     private readonly IErrorCatalog _errors;
 
-    public MfaService(       
+    public MfaService(
         ISmsVerificationService smsVerification,
-        IEmailVerificationService emailVerification,       
+        IEmailVerificationService emailVerification,
         IKeycloakClientUser keycloakClientUser,
+        IKeycloakClientAuthentication keycloakClientAuth,
         IUserRepository userRepository,
         ITotpRepository secretRepo,
         ITotpCache cache,
+        IAuthLockoutService authLockout,
         IErrorCatalog errors)
-    {        
+    {
         _smsVerification = smsVerification;
-        _emailVerification = emailVerification;        
+        _emailVerification = emailVerification;
         _keycloakClientUser = keycloakClientUser;
+        _keycloakClientAuth = keycloakClientAuth;
         _userRepository = userRepository;
         _secretRepo = secretRepo;
         _totpCache = cache;
+        _authLockout = authLockout;
         _errors = errors;
+    }
+
+    private static string MfaLockKey(Guid keycloakUserId) => $"mfa:{keycloakUserId}";
+
+    /// Registers an MFA verification failure. If the failure trips the lockout
+    /// threshold, revokes the Keycloak session issued at the password step and
+    /// deletes the pending login attempt, since the token already exists and
+    /// hiding the cache entry alone would not invalidate it.
+    private async Task<Result<LoginResponseDto>> RegisterMfaFailureAsync(
+        string setupToken, LoginAttemptCached attempt, string errorCode)
+    {
+        var mfaKey = MfaLockKey(attempt.KeycloakUserId);
+        await _authLockout.RegisterLoginFailureAsync(mfaKey);
+
+        if (await _authLockout.IsLockedAsync(mfaKey))
+        {
+            await _keycloakClientAuth.LogoutAsync(attempt.RefreshToken);
+            await _totpCache.RemoveLoginAttemptAsync(setupToken);
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.TooManyAttempts);
+        }
+
+        return _errors.Fail<LoginResponseDto>(errorCode);
     }
 
     /// Set/Change User's Mfa Type
@@ -155,29 +183,36 @@ public class MfaService : IMfaService
     /// Validate Login with TOTP Code  
     public async Task<Result<LoginResponseDto>> VerifyLoginByTotpAsync(string setupToken, string code)
     {
-        // 1. Get LoginAttempt from cache  
+        // 1. Get LoginAttempt from cache
         var loginAttempt = await _totpCache.GetLoginAttemptAsync(setupToken);
         if (loginAttempt is null)
         {
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.LoginSessionExpired);
         }
 
-        // 2. Load the TOTP secret from DB  
+        var mfaKey = MfaLockKey(loginAttempt.KeycloakUserId);
+        if (await _authLockout.IsLockedAsync(mfaKey))
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.TooManyAttempts);
+        }
+
+        // 2. Load the TOTP secret from DB
         var secret = await _secretRepo.GetByUserIdAsync(loginAttempt.KeycloakUserId);
         if (secret == null || string.IsNullOrWhiteSpace(secret.Base32Secret))
         {
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.NoSecretInDBForUser);
         }
 
-        // 3. Validate the provided 6-digit code  
+        // 3. Validate the provided 6-digit code
         var isValid = ValidateCode(secret.Base32Secret, code);
         if (!isValid)
         {
-            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.InvalidTOTPcode);
+            return await RegisterMfaFailureAsync(setupToken, loginAttempt, ErrorCodes.AUTH.InvalidTOTPcode);
         }
 
-        // 4. Clean up LoginAttempt cache  
+        // 4. Clean up LoginAttempt cache
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
+        await _authLockout.RegisterLoginSuccessAsync(mfaKey);
 
         // 5. Update the last verified timestamp for the TOTP secret
         secret.LastVerifiedAt = DateTime.UtcNow;
@@ -251,13 +286,20 @@ public class MfaService : IMfaService
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.LoginSessionExpired);
         }
 
+        var mfaKey = MfaLockKey(loginAttempt.KeycloakUserId);
+        if (await _authLockout.IsLockedAsync(mfaKey))
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.TooManyAttempts);
+        }
+
         var result = await _emailVerification.VerifyMfaCodeAsync(loginAttempt.Email!, code);
         if (!result.Success)
         {
-            return _errors.Fail<LoginResponseDto>(result.ErrorCode!);
+            return await RegisterMfaFailureAsync(setupToken, loginAttempt, result.ErrorCode!);
         }
 
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
+        await _authLockout.RegisterLoginSuccessAsync(mfaKey);
 
         var loginResponse = new LoginResponseDto
         {
@@ -304,13 +346,20 @@ public class MfaService : IMfaService
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.LoginSessionExpired);
         }
 
+        var mfaKey = MfaLockKey(loginAttempt.KeycloakUserId);
+        if (await _authLockout.IsLockedAsync(mfaKey))
+        {
+            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.TooManyAttempts);
+        }
+
         var isValid = _smsVerification.VerifyMfaCode(loginAttempt.PhoneNumber!, code);
         if (!isValid)
         {
-            return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.InvalidSmsCode);
+            return await RegisterMfaFailureAsync(setupToken, loginAttempt, ErrorCodes.AUTH.InvalidSmsCode);
         }
 
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
+        await _authLockout.RegisterLoginSuccessAsync(mfaKey);
 
         var loginResponse = new LoginResponseDto
         {
