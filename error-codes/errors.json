@@ -60,6 +60,7 @@
     { "code": "AUTH-057", "message": "Invalid Whitelist Type." },
     { "code": "AUTH-058", "message": "Invalid Whitelist Value." },
     { "code": "AUTH-059", "message": "Whitelist Value already exists." },
-    { "code": "AUTH-060", "message": "Too many login attempts." }
+    { "code": "AUTH-060", "message": "Too many login attempts." },
+    { "code": "AUTH-062", "message": "Too many code requests, please wait before requesting a new code." }
   ]
 }

@@ -66,5 +66,6 @@ public static class ErrorCodes
         public const string WhitelistValueExists = "AUTH-059";
         public const string TooManyAttempts = "AUTH-060";
         public const string ErrorInErrorCodes = "AUTH-061";
+        public const string MfaResendLimitExceeded = "AUTH-062";
     }
 }

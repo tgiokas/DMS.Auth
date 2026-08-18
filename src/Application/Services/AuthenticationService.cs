@@ -65,9 +65,6 @@ public class AuthenticationService : IAuthenticationService
             return _errors.Fail<LoginResponseDto>(ErrorCodes.AUTH.AuthenticationFailed);
         }
 
-        // Register success
-        await _authLockout.RegisterLoginSuccessAsync(loginKey);
-
         var keycloakUser = await _keycloakClientUser.GetUserByNameAsync(username);
         if (keycloakUser == null && username.Contains('@'))
         {
@@ -100,9 +97,11 @@ public class AuthenticationService : IAuthenticationService
             await _userRepository.AddAsync(dbUser);
         }
 
-        // No MFA --> return token directly  
+        // No MFA --> register success now and return token directly
         if (dbUser.MfaType == MfaType.None)
         {
+            await _authLockout.RegisterLoginSuccessAsync(loginKey);
+
             return Result<LoginResponseDto>.Ok(new LoginResponseDto
             {
                 MfaEnabled = false,
@@ -125,7 +124,8 @@ public class AuthenticationService : IAuthenticationService
                 Username = username,
                 KeycloakUserId = userId,
                 Email = keycloakUser.Email,
-                
+                LoginKey = loginKey,
+
                 AccessToken = tokenResponse.Access_token??"",
                 RefreshToken = tokenResponse?.Refresh_token??"",
                 ExpiresIn = tokenResponse?.Expires_in??0,

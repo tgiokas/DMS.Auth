@@ -47,6 +47,45 @@ public class MfaService : IMfaService
 
     private static string MfaLockKey(Guid keycloakUserId) => $"mfa:{keycloakUserId}";
 
+    private const int MaxMfaResends = 3;
+    private static readonly TimeSpan MfaResendCooldown = TimeSpan.FromSeconds(60);
+    // Mirrors CacheConstants.TotpCacheTtlMins (Infrastructure layer) — keep in sync.
+    private static readonly TimeSpan PendingLoginAttemptWindow = TimeSpan.FromMinutes(10);
+
+    /// Enforces the resend cap/cooldown for send-email and send-sms. Returns a
+    /// failure result if the caller should be refused, otherwise null.
+    private Result<bool>? CheckMfaResendAllowed(LoginAttemptCached attempt)
+    {
+        if (attempt.ResendCount >= MaxMfaResends)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.MfaResendLimitExceeded);
+        }
+
+        if (attempt.LastResendUtc is not null && DateTime.UtcNow - attempt.LastResendUtc.Value < MfaResendCooldown)
+        {
+            return _errors.Fail<bool>(ErrorCodes.AUTH.MfaResendLimitExceeded);
+        }
+
+        return null;
+    }
+
+    /// Records a resend and re-stores the attempt without extending it past its
+    /// original expiry, so repeated resends can't keep the pending attempt (and
+    /// its cached tokens) alive indefinitely.
+    private async Task RegisterMfaResendAsync(string setupToken, LoginAttemptCached attempt)
+    {
+        attempt.ResendCount++;
+        attempt.LastResendUtc = DateTime.UtcNow;
+
+        var remaining = PendingLoginAttemptWindow - (DateTime.UtcNow - attempt.CreatedAtUtc);
+        if (remaining <= TimeSpan.Zero)
+        {
+            remaining = TimeSpan.FromSeconds(1);
+        }
+
+        await _totpCache.StoreLoginAttemptAsync(setupToken, attempt, remaining);
+    }
+
     /// Registers an MFA verification failure. If the failure trips the lockout
     /// threshold, revokes the Keycloak session issued at the password step and
     /// deletes the pending login attempt, since the token already exists and
@@ -213,6 +252,7 @@ public class MfaService : IMfaService
         // 4. Clean up LoginAttempt cache
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
         await _authLockout.RegisterLoginSuccessAsync(mfaKey);
+        await _authLockout.RegisterLoginSuccessAsync(loginAttempt.LoginKey);
 
         // 5. Update the last verified timestamp for the TOTP secret
         secret.LastVerifiedAt = DateTime.UtcNow;
@@ -268,11 +308,19 @@ public class MfaService : IMfaService
             return _errors.Fail<bool>(ErrorCodes.AUTH.NoEmailAvailableForMFA);
         }
 
+        var resendCheck = CheckMfaResendAllowed(loginAttempt);
+        if (resendCheck is not null)
+        {
+            return resendCheck;
+        }
+
         var result = await _emailVerification.SendMfaCodeAsync(loginAttempt.Email!);
         if (!result.Success)
         {
             return _errors.Fail<bool>(result.ErrorCode!);
         }
+
+        await RegisterMfaResendAsync(setupToken, loginAttempt);
 
         return Result<bool>.Ok(data: true, message: "Email Code Sent");
     }
@@ -300,6 +348,7 @@ public class MfaService : IMfaService
 
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
         await _authLockout.RegisterLoginSuccessAsync(mfaKey);
+        await _authLockout.RegisterLoginSuccessAsync(loginAttempt.LoginKey);
 
         var loginResponse = new LoginResponseDto
         {
@@ -328,11 +377,19 @@ public class MfaService : IMfaService
             return _errors.Fail<bool>(ErrorCodes.AUTH.InvalidPhone);
         }
 
+        var resendCheck = CheckMfaResendAllowed(loginAttempt);
+        if (resendCheck is not null)
+        {
+            return resendCheck;
+        }
+
         var result = await _smsVerification.SendMfaSmsAsync(loginAttempt.PhoneNumber);
         if (!result.Success)
         {
             return _errors.Fail<bool>(result.ErrorCode!);
         }
+
+        await RegisterMfaResendAsync(setupToken, loginAttempt);
 
         return Result<bool>.Ok(data: true, message: "Sms Code Sent");
     }
@@ -360,6 +417,7 @@ public class MfaService : IMfaService
 
         await _totpCache.RemoveLoginAttemptAsync(setupToken);
         await _authLockout.RegisterLoginSuccessAsync(mfaKey);
+        await _authLockout.RegisterLoginSuccessAsync(loginAttempt.LoginKey);
 
         var loginResponse = new LoginResponseDto
         {
