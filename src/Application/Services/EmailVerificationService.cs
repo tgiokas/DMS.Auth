@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Security.Cryptography;
+using System.Text;
+
 using Microsoft.Extensions.Options;
 
 using Authentication.Application.Configuration;
@@ -15,7 +17,6 @@ public class EmailVerificationService : IEmailVerificationService
     private readonly IEmailSender _emailSender;
     private readonly IEmailCache _emailCache;
     private readonly IErrorCatalog _errors;
-    private readonly ILogger<EmailVerificationService> _logger;
     private readonly string _verificationUrl;
 
     public EmailVerificationService(
@@ -23,14 +24,12 @@ public class EmailVerificationService : IEmailVerificationService
         IEmailSender emailSender,
         IEmailCache cache,
         IOptions<AuthSettings> authOptions,
-        IErrorCatalog errors,
-        ILogger<EmailVerificationService> logger)
+        IErrorCatalog errors)
     {
         _keycloakClientUser = keycloakClientUser;
         _emailSender = emailSender;
         _emailCache = cache;
         _errors = errors;
-        _logger = logger;
         _verificationUrl = authOptions.Value.VerificationUrl;
     }
 
@@ -152,7 +151,7 @@ public class EmailVerificationService : IEmailVerificationService
             return _errors.Fail<bool>(ErrorCodes.AUTH.VerifyEmailTokenInValid);
         }
 
-        var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
+        var isValid = FixedTimeEquals(cachedCode, code);
         if (!isValid)
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.InvalidEmailCode);
@@ -178,8 +177,8 @@ public class EmailVerificationService : IEmailVerificationService
         }
 
         var code = GenerateCode();
-        await _emailCache.StoreCodeAsync(email, code);
-       
+        await _emailCache.StoreMfaLoginCodeAsync(email, code);
+
         var subject = $"Κωδικός Επιβεβαίωσης Εισόδου (MFA) || Login Verification Code (MFA)";
         var message = $"Your mfa code is: {code}";
 
@@ -217,27 +216,19 @@ public class EmailVerificationService : IEmailVerificationService
 
     public async Task<Result<bool>> VerifyMfaCodeAsync(string email, string code)
     {
-        var cachedCode = await _emailCache.GetCodeAsync(email);
-
-        _logger.LogInformation("Getting Code from cache {code}", cachedCode);
-
+        var cachedCode = await _emailCache.GetMfaLoginCodeAsync(email);
         if (string.IsNullOrWhiteSpace(cachedCode))
         {
             return _errors.Fail<bool>(ErrorCodes.AUTH.VerifyEmailTokenInValid);
         }
-        var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
 
-        _logger.LogInformation("Is code Valid: {isValid}", isValid);
-
+        var isValid = FixedTimeEquals(cachedCode, code);
         if (!isValid)
         {
-            _logger.LogInformation("Message Returned is {message} ", ErrorCodes.AUTH.InvalidEmailCode);
             return _errors.Fail<bool>(ErrorCodes.AUTH.InvalidEmailCode);
         }
 
-        _logger.LogInformation("Code removed from cache");
-
-        await _emailCache.RemoveCodeAsync(email);
+        await _emailCache.RemoveMfaLoginCodeAsync(email);
 
         return Result<bool>.Ok(data: true, message: "Mfa Email verified.");
     }
@@ -272,7 +263,13 @@ public class EmailVerificationService : IEmailVerificationService
 
     private static string GenerateCode()
     {
-        var random = new Random();
-        return random.Next(100_000, 999_999).ToString();
+        return RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
+    }
+
+    private static bool FixedTimeEquals(string a, string b)
+    {
+        var aBytes = Encoding.UTF8.GetBytes(a);
+        var bBytes = Encoding.UTF8.GetBytes(b);
+        return aBytes.Length == bBytes.Length && CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }

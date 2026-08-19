@@ -1,4 +1,7 @@
-﻿using Authentication.Application.Interfaces;
+﻿using System.Security.Cryptography;
+using System.Text;
+
+using Authentication.Application.Interfaces;
 using Authentication.Application.Dtos;
 
 namespace Authentication.Application.Services;
@@ -46,7 +49,7 @@ public class SmsVerificationService : ISmsVerificationService
     public async Task<Result<bool>> VerifySmsAsync(string phoneNumber, string code)
     {
         var cachedCode = _smsCache.GetCode(phoneNumber);
-        var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
+        var isValid = FixedTimeEquals(cachedCode, code);
 
         if (isValid)
             _smsCache.RemoveCode(phoneNumber);
@@ -59,7 +62,7 @@ public class SmsVerificationService : ISmsVerificationService
     public async Task<Result<bool>> SendMfaSmsAsync(string phoneNumber)
     {
         var code = GenerateCode();
-        _smsCache.StoreCode(phoneNumber, code, TimeSpan.FromMinutes(5));
+        _smsCache.StoreMfaLoginCode(phoneNumber, code, TimeSpan.FromMinutes(5));
         var message = $"Your verification code is: {code}";
 
         try
@@ -82,11 +85,11 @@ public class SmsVerificationService : ISmsVerificationService
     
     public bool VerifyMfaCode(string phoneNumber, string code)
     {
-        var cachedCode = _smsCache.GetCode(phoneNumber);
-        var isValid = string.Equals(cachedCode, code, StringComparison.OrdinalIgnoreCase);
+        var cachedCode = _smsCache.GetMfaLoginCode(phoneNumber);
+        var isValid = FixedTimeEquals(cachedCode, code);
 
         if (isValid)
-            _smsCache.RemoveCode(phoneNumber);
+            _smsCache.RemoveMfaLoginCode(phoneNumber);
 
         return isValid;
     }
@@ -105,9 +108,20 @@ public class SmsVerificationService : ISmsVerificationService
         return Result<bool>.Ok(data: true, message: "Phone Verified.");
     }
 
-    private string GenerateCode()
+    private static string GenerateCode()
     {
-        var random = new Random();
-        return random.Next(100_000, 999_999).ToString();
+        return RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
+    }
+
+    private static bool FixedTimeEquals(string? a, string? b)
+    {
+        if (a is null || b is null)
+        {
+            return false;
+        }
+
+        var aBytes = Encoding.UTF8.GetBytes(a);
+        var bBytes = Encoding.UTF8.GetBytes(b);
+        return aBytes.Length == bBytes.Length && CryptographicOperations.FixedTimeEquals(aBytes, bBytes);
     }
 }

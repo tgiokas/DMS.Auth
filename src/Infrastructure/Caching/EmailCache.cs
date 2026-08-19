@@ -52,4 +52,21 @@ public class EmailCache : IEmailCache
     {
         await _cache.RemoveAsync(GetKey("email:mfa", email));
     }
+
+    // MFA-during-login codes (separate namespace from the public verify-code flow above)
+    public async Task StoreMfaLoginCodeAsync(string email, string code, TimeSpan? ttl = null)
+    {
+        var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl ?? _defaultTtl };
+        await _cache.SetStringAsync(GetKey("email:mfa:login", email), code, options);
+    }
+
+    public async Task<string?> GetMfaLoginCodeAsync(string email)
+    {
+        return await _cache.GetStringAsync(GetKey("email:mfa:login", email));
+    }
+
+    public async Task RemoveMfaLoginCodeAsync(string email)
+    {
+        await _cache.RemoveAsync(GetKey("email:mfa:login", email));
+    }
 }

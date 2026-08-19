@@ -14,6 +14,7 @@ public class SmsCache : ISmsCache
     }
 
     private static string GetKey(string token) => $"sms:verify:{token}";
+    private static string GetMfaLoginKey(string token) => $"sms:mfa:login:{token}";
 
     public void StoreCode(string token, string entry, TimeSpan? ttl = null)
     {
@@ -29,5 +30,21 @@ public class SmsCache : ISmsCache
     public void RemoveCode(string token)
     {
         _cache.Remove(GetKey(token));
+    }
+
+    public void StoreMfaLoginCode(string token, string entry, TimeSpan? ttl = null)
+    {
+        _cache.Set(GetMfaLoginKey(token), entry, ttl ?? _defaultTtl);
+    }
+
+    public string? GetMfaLoginCode(string token)
+    {
+        _cache.TryGetValue(GetMfaLoginKey(token), out string? entry);
+        return entry;
+    }
+
+    public void RemoveMfaLoginCode(string token)
+    {
+        _cache.Remove(GetMfaLoginKey(token));
     }
 }
